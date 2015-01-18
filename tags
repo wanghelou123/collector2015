@@ -1,0 +1,60 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+AFX_LOG_H__B87F71E3_FFAE_4CFA_A528_3F4F2FF7D69E__INCLUDED_	Log.h	2;"	d
+CC	Makefile	/^CC		=	$(CROSS_COMPILE)g++$/;"	m
+CFLAGS	Makefile	/^CFLAGS	=	-W  -g$/;"	m
+CLI_NUM	MbtcpServer.cpp	22;"	d	file:
+COMMMCU_H	commMcu.h	2;"	d
+DEBUG	Log.h	23;"	d
+EVENT_NUM	MbtcpServer.cpp	20;"	d	file:
+FATAL	Log.h	26;"	d
+Log	Log.cpp	/^Log::Log()  $/;"	f	class:Log
+Log	Log.h	/^class Log  $/;"	c
+MAKEWORD	modbus.h	4;"	d
+MAXLINE	MbtcpServer.cpp	21;"	d	file:
+MODBUS_H	modbus.h	2;"	d
+NOTICE	Log.h	24;"	d
+PATH_SIZE	Log.h	20;"	d
+Read	commMcu.cpp	/^int commMcu::Read(unsigned char (&recv_buf)[1024])$/;"	f	class:commMcu
+STRIP	Makefile	/^STRIP	=	$(CROSS_COMPILE)strip$/;"	m
+TRACE	Log.h	22;"	d
+WARNING	Log.h	25;"	d
+Write	commMcu.cpp	/^int commMcu::Write()$/;"	f	class:commMcu
+_log_name	Log.h	/^		char _log_name[PATH_SIZE];  $/;"	m	class:Log
+_log_path	Log.h	/^		char _log_path[PATH_SIZE];  $/;"	m	class:Log
+_logger	Log.h	/^		static Logger _logger;  $/;"	m	class:Log
+check_data_num	modbus.cpp	/^bool check_data_num(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+check_func_node	modbus.cpp	/^bool check_func_node(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+check_length	modbus.cpp	/^bool check_length(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+check_modbus_packet	modbus.cpp	/^bool check_modbus_packet(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+check_protocol_identifier	modbus.cpp	/^bool check_protocol_identifier(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+check_start_addr	modbus.cpp	/^bool check_start_addr(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+check_uid	modbus.cpp	/^bool check_uid(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+clean_socket_buf	MbtcpServer.cpp	/^void clean_socket_buf(int skt) $/;"	f
+clifd_array	MbtcpServer.cpp	/^static int clifd_array[CLI_NUM]={0};$/;"	v	file:
+commMcu	commMcu.cpp	/^commMcu::commMcu()$/;"	f	class:commMcu
+commMcu	commMcu.h	/^class commMcu{$/;"	c
+init_server_socket	MbtcpServer.cpp	/^int init_server_socket()$/;"	f
+init_sock	commMcu.cpp	/^int commMcu::init_sock()$/;"	f	class:commMcu
+instance	Log.cpp	/^Log& Log::instance()  $/;"	f	class:Log
+main	MbtcpClient.cpp	/^int main()$/;"	f
+main	MbtcpServer.cpp	/^int main()$/;"	f
+mcu	modbus.h	/^commMcu mcu;$/;"	v
+open_log	Log.cpp	/^bool Log::open_log()  $/;"	f	class:Log
+process_modbus_data	modbus.cpp	/^int process_modbus_data(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+process_new_client	MbtcpServer.cpp	/^void process_new_client(int epfd, int listenfd)$/;"	f
+process_socket_data	MbtcpServer.cpp	/^int  process_socket_data(int epfd, int sockfd)$/;"	f
+read_node_status	modbus.cpp	/^int read_node_status(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+read_register	modbus.cpp	/^int read_register(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+server_ip	commMcu.h	/^	char server_ip[128];$/;"	m	class:commMcu
+server_port	commMcu.h	/^	int server_port;$/;"	m	class:commMcu
+show_prog_info	MbtcpClient.cpp	/^void show_prog_info()$/;"	f
+show_prog_info	MbtcpServer.cpp	/^void show_prog_info()$/;"	f
+sockfd	commMcu.h	/^	int sockfd;$/;"	m	class:commMcu
+write_register	modbus.cpp	/^int write_register(unsigned char (&tcp_modbus_buf)[256])$/;"	f
+~Log	Log.cpp	/^Log::~Log()  $/;"	f	class:Log
+~commMcu	commMcu.cpp	/^commMcu::~commMcu()$/;"	f	class:commMcu
