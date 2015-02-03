@@ -40,7 +40,7 @@ bool Log::open_log()
 
 	/* step 2: Instantiate a layout object，实例化一个布局器对象，控制输出信息的格式*/  
 	//std::string pattern = "[%d{%m/%d/%y %H:%M:%S}] [%p] [%t] - %m %l%n";
-	std::string pattern = "[%d{%m/%d/%y %H:%M:%S}] [%p] - %m %l%n";
+	std::string pattern = "[%D{%m/%d/%y %H:%M:%S}] [%p] - %m %l%n";
 	std::auto_ptr<Layout> _layout(new PatternLayout(pattern));  
 
 	/* step 3: Attach the layout object to the appender，将布局器绑定到挂接器上 */  

@@ -1,9 +1,9 @@
 #ifndef COMMMCU_H
 #define COMMMCU_H
-class commMcu{
+class CommunicateMcu{
 public:
-	commMcu();
-	~commMcu();
+	CommunicateMcu();
+	~CommunicateMcu();
 	//int Read(unsigned char * *recv_buf);
 	int Read(unsigned char (&recv_buf)[1024]);
 	int Write(unsigned char (&send_buf)[1024], int size, unsigned char (&recv_buf)[1024]);

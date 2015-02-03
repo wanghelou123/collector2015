@@ -6,9 +6,9 @@
 #include <errno.h>
 
 #include "Log.h"
-#include "commMcu.h"
+#include "CommunicateMcu.h"
 
-commMcu::commMcu()
+CommunicateMcu::CommunicateMcu()
 {
 	DEBUG("create a commMuc object.");
 	memset(server_ip, '\0', sizeof(server_ip));
@@ -17,7 +17,6 @@ commMcu::commMcu()
 	while(1){
 		if(init_sock() == -1){
 			FATAL("init socket error!");
-			exit(-2);
 		}else{
 			NOTICE("init socket success!");
 			break;
@@ -26,7 +25,7 @@ commMcu::commMcu()
 	}
 }
 
-commMcu::~commMcu()
+CommunicateMcu::~CommunicateMcu()
 {
 	DEBUG(__func__);
 	if(shutdown(sockfd,SHUT_RDWR)<0){
@@ -37,7 +36,7 @@ commMcu::~commMcu()
 	}
 }
 
-int commMcu::Read(unsigned char (&recv_buf)[1024])
+int CommunicateMcu::Read(unsigned char (&recv_buf)[1024])
 {
 	unsigned char send_buf[] = {0x01, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0xF1, 0xBA};
 	//unsigned char recv_buf[512];
@@ -68,7 +67,7 @@ int commMcu::Read(unsigned char (&recv_buf)[1024])
 
 }
 
-int commMcu::Write(unsigned char (&send_buf)[1024], int size, unsigned char (&recv_buf)[1024])
+int CommunicateMcu::Write(unsigned char (&send_buf)[1024], int size, unsigned char (&recv_buf)[1024])
 {
 	int n = send(sockfd, send_buf, size, MSG_NOSIGNAL);
 	struct timeval tmOut;
@@ -98,7 +97,7 @@ int commMcu::Write(unsigned char (&send_buf)[1024], int size, unsigned char (&re
 	return n;
 }
 
-int commMcu::init_sock()
+int CommunicateMcu::init_sock()
 {
 	DEBUG("commMuc init the sock.");
 	struct hostent *h;

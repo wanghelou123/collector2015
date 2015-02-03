@@ -1,14 +1,29 @@
 #include <string.h>
 #include "modbus.h"
 #include "Log.h"
-struct board_info{
+#define MAXLINE 80
+struct DeivceInfo{
 	int ain_channel_num;
 	int aout_channel_num;
 	int din_channel_num;
 	int dout_channel_num;
+	char dev_ip[20];
+	char dev_mask[20];
+	char dev_gateway[20];
+	char dev_dns[20];
+	char dev_mac[20];
+	char dev_serialno[20];
 }collect_board;
 
-int process_modbus_data(unsigned char (&tcp_modbus_buf)[256])
+ModbusTcp::ModbusTcp()
+{
+	DEBUG("construct the ModbusTcp object!");	 
+}
+ModbusTcp::~ModbusTcp()
+{
+	DEBUG("destory the ModbusTcp object!");
+}
+int ModbusTcp::process_modbus_data(unsigned char (&tcp_modbus_buf)[256])
 {
 	int ret=0;
 	if(!check_modbus_packet(tcp_modbus_buf)) {
@@ -29,7 +44,7 @@ int process_modbus_data(unsigned char (&tcp_modbus_buf)[256])
 	return ret;
 }
 
-bool check_modbus_packet(unsigned char (&tcp_modbus_buf)[256])
+bool ModbusTcp::check_modbus_packet(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	int exception_code = 0;
@@ -72,7 +87,7 @@ bool check_modbus_packet(unsigned char (&tcp_modbus_buf)[256])
 	return true;
 }
 
-bool check_protocol_identifier(unsigned char (&tcp_modbus_buf)[256])
+bool ModbusTcp::check_protocol_identifier(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	if(MAKEWORD(tcp_modbus_buf[2], tcp_modbus_buf[3]) != 0x00) {
@@ -81,7 +96,7 @@ bool check_protocol_identifier(unsigned char (&tcp_modbus_buf)[256])
 	return true;
 }
 
-bool check_length(unsigned char (&tcp_modbus_buf)[256])
+bool ModbusTcp::check_length(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	int len = MAKEWORD(tcp_modbus_buf[4], tcp_modbus_buf[5]);	
@@ -100,7 +115,7 @@ bool check_length(unsigned char (&tcp_modbus_buf)[256])
 	return true;
 }
 
-bool check_uid(unsigned char (&tcp_modbus_buf)[256])
+bool ModbusTcp::check_uid(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	switch(tcp_modbus_buf[7]){
@@ -120,7 +135,7 @@ bool check_uid(unsigned char (&tcp_modbus_buf)[256])
 	return true;
 }
 
-bool check_func_node(unsigned char (&tcp_modbus_buf)[256])
+bool ModbusTcp::check_func_node(unsigned char (&tcp_modbus_buf)[256])
 {
 	//for(int i=0;i<20; i++){printf("%.2x ", tcp_modbus_buf[i]);}printf("\n");
 	DEBUG(__func__);
@@ -138,7 +153,7 @@ bool check_func_node(unsigned char (&tcp_modbus_buf)[256])
 	return true;
 }
 
-bool check_start_addr(unsigned char (&tcp_modbus_buf)[256])
+bool ModbusTcp::check_start_addr(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	int start_addr = MAKEWORD(tcp_modbus_buf[8], tcp_modbus_buf[9]);
@@ -174,7 +189,7 @@ bool check_start_addr(unsigned char (&tcp_modbus_buf)[256])
 	return true;
 }
 
-bool check_data_num(unsigned char (&tcp_modbus_buf)[256])
+bool ModbusTcp::check_data_num(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	int start_addr = MAKEWORD(tcp_modbus_buf[8], tcp_modbus_buf[9]);
@@ -192,12 +207,14 @@ bool check_data_num(unsigned char (&tcp_modbus_buf)[256])
 					return false;
 				}
 			}else if(uid == 0xFF) {
-				switch(start_addr == 0x0000) if(data_num != 0x0008) return false; break;
-				switch(start_addr == 0x0008) if(data_num != 0x0008) return false; break;
-				switch(start_addr == 0x0010) if(data_num != 0x0008) return false; break;
-				switch(start_addr == 0x0018) if(data_num != 0x0008) return false; break;
-				switch(start_addr == 0x0020) if(data_num != 0x0009) return false; break;
-				switch(start_addr == 0x0029) if(data_num != 0x0008) return false; break;
+				switch(start_addr&0xFF) {
+					case 0x00: if(data_num != 0x0008) return false; break;
+					case 0x08: if(data_num != 0x0008) return false; break;
+					case 0x10: if(data_num != 0x0008) return false; break;
+					case 0x18: if(data_num != 0x0008) return false; break;
+					case 0x20: if(data_num != 0x0009) return false; break;
+					case 0x29: if(data_num != 0x0008) return false; break;
+				}
 			}
 			break;
 		case 0x10:
@@ -210,7 +227,7 @@ bool check_data_num(unsigned char (&tcp_modbus_buf)[256])
 	return true;
 }
 
-unsigned int crc(unsigned char *buf,int start,int cnt) 
+unsigned int ModbusTcp::crc(unsigned char *buf,int start,int cnt) 
 {
 	int     i,j;
 	unsigned    temp,temp2,flag;
@@ -238,7 +255,113 @@ unsigned int crc(unsigned char *buf,int start,int cnt)
 	return(temp);
 }
 
-int read_node_status(unsigned char (&tcp_modbus_buf)[256])
+void ModbusTcp::strcopyx(char *desc, char *src){
+	while (*src != '\0') {
+		if (*src == '\r' || *src == '\n') {
+			src++;
+			break;
+		}   
+		*desc++ = *src++;
+	}           
+} 
+void ModbusTcp::get_device_info()
+{
+	FILE *fp;
+	char buffer[128];
+	char *pos;
+
+	fp = fopen("/etc/gateway/network.txt", "r");
+
+	if(NULL == fp){
+		perror("fopen:");
+	}
+
+
+	while(fgets(buffer, MAXLINE, fp)){
+		pos=strrchr(buffer, '=');
+		if(pos){
+			char tmp[128]={0};
+			strncpy(tmp, buffer, strlen(buffer)-strlen(pos));
+			pos++;
+			if(strcmp(tmp, "Serialnum") == 0){
+				strcopyx(collect_board.dev_serialno, pos);
+				break;
+			}
+		}
+	}
+	rewind(fp);
+	while(fgets(buffer, MAXLINE, fp)){
+		pos=strrchr(buffer, '=');
+		if(pos){
+			char tmp[128]={0};
+			strncpy(tmp, buffer, strlen(buffer)-strlen(pos));
+			pos++;
+			if(strcmp(tmp, "IP") == 0){
+				strcopyx(collect_board.dev_ip, pos);
+				break;
+			}
+		}
+	}
+
+	rewind(fp);
+	while(fgets(buffer, MAXLINE, fp)){
+		pos=strrchr(buffer, '=');
+		if(pos){
+			char tmp[128]={0};
+			strncpy(tmp, buffer, strlen(buffer)-strlen(pos));
+			pos++;
+			if(strcmp(tmp, "Mask") == 0){
+				strcopyx(collect_board.dev_mask, pos);
+				break;
+			}
+		}
+	}
+
+	rewind(fp);
+	while(fgets(buffer, MAXLINE, fp)){
+		pos=strrchr(buffer, '=');
+		if(pos){
+			char tmp[128]={0};
+			strncpy(tmp, buffer, strlen(buffer)-strlen(pos));
+			pos++;
+			if(strcmp(tmp, "Gateway") == 0){
+				strcopyx(collect_board.dev_gateway, pos);
+				break;
+			}
+		}
+	}
+
+	rewind(fp);
+	while(fgets(buffer, MAXLINE, fp)){
+		pos=strrchr(buffer, '=');
+		if(pos){
+			char tmp[128]={0};
+			strncpy(tmp, buffer, strlen(buffer)-strlen(pos));
+			pos++;
+			if(strcmp(tmp, "DNS") == 0){
+				strcopyx(collect_board.dev_dns, pos);
+				break;
+			}
+		}
+	}
+	rewind(fp);
+	while(fgets(buffer, MAXLINE, fp)){
+		pos=strrchr(buffer, '=');
+		if(pos){
+			char tmp[128]={0};
+			strncpy(tmp, buffer, strlen(buffer)-strlen(pos));
+			pos++;
+			if(strcmp(tmp, "MAC") == 0){
+				strcopyx(collect_board.dev_mac, pos);
+				break;
+			}
+		}
+	}
+
+	fclose(fp);
+}
+
+int ModbusTcp::read_node_status(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	int start_addr = MAKEWORD(tcp_modbus_buf[8], tcp_modbus_buf[9])-0x5555;
@@ -256,104 +379,38 @@ int read_node_status(unsigned char (&tcp_modbus_buf)[256])
 	return ret_buf[8]+9;
 }
 
-int read_register(unsigned char (&tcp_modbus_buf)[256])
+int ModbusTcp::read_register(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	int start_addr = MAKEWORD(tcp_modbus_buf[8], tcp_modbus_buf[9]);
 	int data_num = MAKEWORD(tcp_modbus_buf[10], tcp_modbus_buf[11]);
 	int uid = tcp_modbus_buf[6];
-	commMcu mcu;
-	unsigned char recv_buf[1024];
-	unsigned char node_buf[6][128]={0};
-	int n = mcu.Read(recv_buf);
-
-	int node_type = recv_buf[2];
-	int node_len = recv_buf[3];
-	int node_bytes=0;
-	unsigned char *p = recv_buf+4;
-#if 1
-	unsigned char *p_recv = recv_buf;
-	int a = *(p_recv+3);
-	int b = *(p_recv+3+a+2);
-	int c = *(p_recv+3+a+2+b+2);
-	int d = *(p_recv+3+a+2+b+2+c+2);
-	printf("========>a:%d, b:%d, c:%d, d:%d\n",3, 3+a+2, 3+a+2+b+2, 3+a+2+b+2+c+2);
-	printf("a:%d, b:%d, c:%d, d:%d\n", a,b,c,d);
-	collect_board.ain_channel_num = a/4;
-	collect_board.aout_channel_num = b/4;
-	collect_board.din_channel_num = c/4;
-	collect_board.dout_channel_num = d/4;
-	DEBUG("ain_channel_num:" << collect_board.ain_channel_num << "aout_channel_num: "<<collect_board.aout_channel_num << "din_cout:"<< collect_board.din_channel_num << "dout_channel_num:"<< collect_board.dout_channel_num);
-
-#endif
-	for(int i=0; i<6; i++) {
-		if(node_type%2 == 0){ 
-			node_bytes = 16; //模拟量输出，开关量输出 
-		}else {
-			node_bytes = 32;//模拟量采集，开关量采集
-		}
-		switch(node_len/node_bytes){
-			case 1:
-				memcpy(node_buf[i+0], p+node_bytes*0, node_bytes);
-				break;
-			case 2:
-				memcpy(node_buf[i+0], p+node_bytes*0, node_bytes);
-				memcpy(node_buf[i+1], p+node_bytes*1, node_bytes);
-				break;
-			case 3:
-				memcpy(node_buf[i+0], p+node_bytes*0, node_bytes);
-				memcpy(node_buf[i+1], p+node_bytes*1, node_bytes);
-				memcpy(node_buf[i+2], p+node_bytes*2, node_bytes);
-				break;
-			case 4:
-				memcpy(node_buf[i+0], p+node_bytes*0, node_bytes);
-				memcpy(node_buf[i+1], p+node_bytes*1, node_bytes);
-				memcpy(node_buf[i+2], p+node_bytes*2, node_bytes);
-				memcpy(node_buf[i+3], p+node_bytes*3, node_bytes);
-				break;
-			case 5:
-				memcpy(node_buf[i+0], p+node_bytes*0, node_bytes);
-				memcpy(node_buf[i+1], p+node_bytes*1, node_bytes);
-				memcpy(node_buf[i+2], p+node_bytes*2, node_bytes);
-				memcpy(node_buf[i+3], p+node_bytes*3, node_bytes);
-				memcpy(node_buf[i+4], p+node_bytes*4, node_bytes);
-				break;
-			case 6:
-				memcpy(node_buf[i+0], p+node_bytes*0, node_bytes);
-				memcpy(node_buf[i+1], p+node_bytes*1, node_bytes);
-				memcpy(node_buf[i+2], p+node_bytes*2, node_bytes);
-				memcpy(node_buf[i+3], p+node_bytes*3, node_bytes);
-				memcpy(node_buf[i+4], p+node_bytes*4, node_bytes);
-				memcpy(node_buf[i+5], p+node_bytes*5, node_bytes);
-				break;
-		}
-		i += node_len/node_bytes;
-		p += node_len;
-		node_type = *p;
-		node_len = *(p+1);
-	}
-	DEBUG("node_type: "<< node_type);
-	DEBUG("node_len: "<<node_len);
-#if 1
-	for(int i=0; i<6; i++) {
-		for(int j=0; j<32; j++) {
-			printf("%.2x ", node_buf[i][j]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-#endif
 	memset(tcp_modbus_buf+9, '\0', sizeof(tcp_modbus_buf)-9);
-	tcp_modbus_buf[5] = data_num+3;
+	tcp_modbus_buf[5] = data_num*2+3;
 	tcp_modbus_buf[8] = data_num*2;
-	if(uid<=6)
-		memcpy(tcp_modbus_buf+9, node_buf[uid-1]+start_addr, data_num*2);
+
+	if(uid<=6) {
+		unsigned char node_buf[BUFFER_SIZE];
+		conver.get_node_data(uid, node_buf);
+		memcpy(tcp_modbus_buf+9, node_buf+start_addr, data_num*2);
+	}else if(uid == 0xFF) {
+		get_device_info();
+		switch(start_addr&0xFF) {
+			case 0x00: memcpy(tcp_modbus_buf+9, collect_board.dev_ip,data_num*2); break;
+			case 0x08: memcpy(tcp_modbus_buf+9, collect_board.dev_mask,data_num*2); break;
+			case 0x10: memcpy(tcp_modbus_buf+9, collect_board.dev_gateway,data_num*2); break;
+			case 0x18: memcpy(tcp_modbus_buf+9, collect_board.dev_dns,data_num*2); break;
+			case 0x20: memcpy(tcp_modbus_buf+9, collect_board.dev_mac,data_num*2); break;
+			case 0x29: memcpy(tcp_modbus_buf+9, collect_board.dev_serialno,data_num*2); break;
+		}
+
+	}
 
 	return 9+data_num*2;
 }
 
-//继电器输出
-bool relay_output(int sensor_id, int channel_id, int data)
+//模拟量、 继电器输出
+bool ModbusTcp::relay_output(int sensor_id, int channel_id,int control_type,  int data)
 {
 	DEBUG(__func__<< " sensor_id:"<<sensor_id << " channel_id:"<< channel_id<<" data:"<<data);
 	int zigbee_node_start = collect_board.ain_channel_num/8 + collect_board.aout_channel_num/4 + collect_board.din_channel_num/8+1;
@@ -369,7 +426,7 @@ bool relay_output(int sensor_id, int channel_id, int data)
 	}
 	unsigned char send_buf[1024] = {0x01,0x05};
 	unsigned char recv_buf[1024] = {0x00};
-	send_buf[2]= 0x04; //控制类型，开关量输出
+	send_buf[2]= control_type; //控制类型，开关量输出
 	send_buf[3]= sensor_id - zigbee_node_start + channel_id;//通道编号
 	send_buf[4]= (data>>24)&0xFF;
 	send_buf[5]= (data>>16)&0xFF;
@@ -380,7 +437,6 @@ bool relay_output(int sensor_id, int channel_id, int data)
 	crc_calc = crc( send_buf, 0, 10 - 2 );
 	send_buf[8]=((unsigned)crc_calc >>8)&0xFF;
 	send_buf[9]=((unsigned)crc_calc)&0xFF;
-	commMcu mcu;
 	int n = mcu.Write(send_buf, 10, recv_buf);
 	if(0 != memcmp(send_buf, recv_buf, 10)) {
 		FATAL(__func__ <<  " controle relay error");
@@ -390,14 +446,14 @@ bool relay_output(int sensor_id, int channel_id, int data)
 	return true;
 }
 
-int write_register(unsigned char (&tcp_modbus_buf)[256])
+int ModbusTcp::write_register(unsigned char (&tcp_modbus_buf)[256])
 {
 	DEBUG(__func__);
 	int error_flag = 0;
 	unsigned char channel_type;
 	int channel_num = tcp_modbus_buf[12]/4;
 	int start_addr = MAKEWORD(tcp_modbus_buf[8], tcp_modbus_buf[9]);
-	unsigned char *p = tcp_modbus_buf + 13;
+	unsigned char *p = tcp_modbus_buf + 15;
 	unsigned char right_buf[12];
 	unsigned char error_buf[9];
 	memcpy(right_buf, tcp_modbus_buf, sizeof(right_buf));
@@ -417,12 +473,12 @@ int write_register(unsigned char (&tcp_modbus_buf)[256])
 		switch(channel_type) {
 			case 0xA0://开关量输出
 				if((0xA0|((start_addr+2)/2))==p[0] && 0x40==p[1] && 0xFF==p[2] && 0xFF==p[3]) {
-					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 1)) {
+					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 0x04, 0x01)) {
 						break;
 					}
 				}
 				else if((0xA0|((start_addr+2)/2))==p[0] && 0x40==p[1] && 0x00==p[2] && 0x00==p[3]) {
-					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 0)) {
+					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 0x04, 0x00)) {
 						break;
 					}
 				}else {
@@ -431,8 +487,9 @@ int write_register(unsigned char (&tcp_modbus_buf)[256])
 				}
 				break;
 			case 0xD0: //模拟量输出
-				if((0xD0|((start_addr+2)/2))==p[0] && 0x40==p[1]) {
-					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 1)) {
+				if((0xD0|((start_addr+2)/2))==p[0] && 0x83==p[1]) {
+					int ad_val = conver.asr_to_ad_channel(tcp_modbus_buf[6], p[0]&0x0F, ((p[2]<<8)|p[3])/1000);
+					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 0x02, ad_val)) {
 						break;
 					}
 				}

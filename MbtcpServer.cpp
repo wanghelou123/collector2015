@@ -39,7 +39,7 @@ int init_server_socket()
 	bzero(&serveraddr, sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serveraddr.sin_port=htons(502);
+	serveraddr.sin_port=htons(503);
 	int option=1;
 	if(setsockopt(listenfd, SOL_SOCKET,SO_REUSEADDR, &option, sizeof(int) ) < 0){
 		perror("setsockopt ");
@@ -145,7 +145,7 @@ void process_new_client(int epfd, int listenfd)
 	}
 }
 
-int  process_socket_data(int epfd, int sockfd)
+int  process_socket_data(int epfd, int sockfd, ModbusTcp & modbus_tcp)
 {
 
 	int ret = 0, n=0;
@@ -177,7 +177,7 @@ int  process_socket_data(int epfd, int sockfd)
 			printf("%.2x ", line[i]);
 		}printf("\n");
 
-		n = process_modbus_data(line);
+		n = modbus_tcp.process_modbus_data(line);
 	
 		if(send(sockfd, line, n, MSG_NOSIGNAL)<0){//写socket出错后关闭socket
 			FATAL("send "<<strerror(errno)<< ",will close socket.");
@@ -222,7 +222,9 @@ int main()
 
 	//初始化网络
 	listenfd = init_server_socket();
-
+	
+	//创建ModbusTcp对象
+	ModbusTcp modbus_tcp; 
 
 	struct epoll_event ev, events[EVENT_NUM];
 	epfd=epoll_create(256);
@@ -243,7 +245,7 @@ int main()
 			}/*如果是已经连接的用户，并且收到数据，那么进行读入*/
 			else if(events[i].events&EPOLLIN){
 
-				if(process_socket_data(epfd, events[i].data.fd)<0){
+				if(process_socket_data(epfd, events[i].data.fd, modbus_tcp)<0){
 					events[i].data.fd = -1;
 				}
 			}

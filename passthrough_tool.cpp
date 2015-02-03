@@ -40,7 +40,8 @@ struct mcu_data{
 	unsigned char buf[1024];
 	int len;
 } mcu_data_g;
-
+static int adc_type;
+static int unit_info[6];
 void show_prog_info()
 {
 	cout << "\ncollector2014 Software, Inc."<<endl;
@@ -101,6 +102,39 @@ void setnonblocking(int sock)
 		perror("fcntl(sock,SETFL,opts)");
 		exit(1);
 	}
+}
+int init_unit_info()
+{
+	DEBUG(__func__);
+	sqlite3 *db;
+	sqlite3_stmt   *stmt;
+	int rc;
+
+	char sql[128]; 
+
+	rc = sqlite3_open("/etc/gateway/collector.db", &db);
+	if (rc) {
+		FATAL("Can't open database: " << sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return -1;
+	}  
+	sprintf(sql, "select * from flags where sn>=2;");
+	rc = sqlite3_prepare(db, sql, (int)strlen(sql), &stmt, NULL); 
+	if(rc != SQLITE_OK) { 
+		FATAL("SQL error:" << sql << "->" << sqlite3_errmsg(db));
+	}   
+	int i=0;
+	rc = sqlite3_step(stmt);
+	adc_type = sqlite3_column_int(stmt, 2);
+	DEBUG(sqlite3_column_int(stmt, 0)<<" "<< sqlite3_column_text(stmt, 1)<<" "<< sqlite3_column_int(stmt, 2) );
+	rc = sqlite3_step(stmt);
+	while(rc == SQLITE_ROW){
+		unit_info[i++] = sqlite3_column_int(stmt, 2);
+		DEBUG(sqlite3_column_int(stmt, 0)<<" "<< sqlite3_column_text(stmt, 1)<<" "<< sqlite3_column_int(stmt, 2) );
+		rc = sqlite3_step(stmt);
+	}
+	sqlite3_finalize(stmt);
+	sqlite3_close(db);
 }
 
 int init_serial(int nSerial)
@@ -304,13 +338,13 @@ void process_serial_data()
 	}
 	DEBUG("recv from serial  num: " << n<< " " << tmp);
 	unsigned short crc_calc = 0;
-	mcu_send_buf[3]=0x02;
-	mcu_send_buf[4]=0x01;
-	mcu_send_buf[5]=0x01;
-	mcu_send_buf[6]=0x01;
-	mcu_send_buf[7]=0x01;
-	mcu_send_buf[8]=0x01;
-	mcu_send_buf[9]=0x01;
+	mcu_send_buf[3]=adc_type;
+	mcu_send_buf[4]=unit_info[0];
+	mcu_send_buf[5]=unit_info[1];
+	mcu_send_buf[6]=unit_info[2];
+	mcu_send_buf[7]=unit_info[3];
+	mcu_send_buf[8]=unit_info[4];
+	mcu_send_buf[9]=unit_info[5];
 	crc_calc = crc( mcu_send_buf, 0, 12 - 2 );
 	mcu_send_buf[10]=((unsigned)crc_calc >>8)&0xFF;
 	mcu_send_buf[11]=((unsigned)crc_calc)&0xFF;
@@ -371,6 +405,12 @@ void process_pipe_data(int fd)
 	if ( (n = myserial->serialRead(line)) < 0) {
 		FATAL("read data from serial port error,"<<n);
 		return ;
+	}
+	DEBUG("recv from serial bytes is:"<< n);
+	if(n == 7){
+		DEBUG( __func__ << " read from serial bytes is "<< n << " will config the mcu.");
+		process_serial_data(); 	
+		return;
 	}
 	mcu_data_g.len = n;
 	memcpy(mcu_data_g.buf, line, n);
@@ -545,7 +585,6 @@ void *collect_data(void *arg)
 
 }
 
-
 int main(int argc, char* argv[])
 {
 	int i, listenfd,epfd,nfds;
@@ -565,6 +604,9 @@ int main(int argc, char* argv[])
 
 	//打开日志  
 	init_log();
+
+	//初始化每个单元的类型 
+	init_unit_info();
 
 	//初始化串口
 	init_serial( atoi(argv[1]) );
