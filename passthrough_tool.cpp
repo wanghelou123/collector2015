@@ -118,20 +118,21 @@ int init_unit_info()
 		sqlite3_close(db);
 		return -1;
 	}  
-	sprintf(sql, "select * from flags where sn>=2;");
+	sprintf(sql, "select name, flag from flags;");
 	rc = sqlite3_prepare(db, sql, (int)strlen(sql), &stmt, NULL); 
 	if(rc != SQLITE_OK) { 
 		FATAL("SQL error:" << sql << "->" << sqlite3_errmsg(db));
 	}   
 	int i=0;
-	rc = sqlite3_step(stmt);
-	adc_type = sqlite3_column_int(stmt, 2);
-	DEBUG(sqlite3_column_int(stmt, 0)<<" "<< sqlite3_column_text(stmt, 1)<<" "<< sqlite3_column_int(stmt, 2) );
-	rc = sqlite3_step(stmt);
-	while(rc == SQLITE_ROW){
-		unit_info[i++] = sqlite3_column_int(stmt, 2);
-		DEBUG(sqlite3_column_int(stmt, 0)<<" "<< sqlite3_column_text(stmt, 1)<<" "<< sqlite3_column_int(stmt, 2) );
-		rc = sqlite3_step(stmt);
+	while(sqlite3_step(stmt) == SQLITE_ROW){
+		if(!strncmp("adc_type", (const char*)sqlite3_column_text(stmt, 0), strlen("adc_type"))) {
+			adc_type = sqlite3_column_int(stmt, 1);
+			DEBUG(sqlite3_column_text(stmt, 0) <<" "<< sqlite3_column_int(stmt, 1));
+		}else if(!strncmp("unit", (const char*)sqlite3_column_text(stmt, 0), strlen("unit"))) {
+			unit_info[i++] = sqlite3_column_int(stmt, 1);
+			DEBUG(sqlite3_column_text(stmt, 0) <<" "<< sqlite3_column_int(stmt, 1));
+		}
+
 	}
 	sqlite3_finalize(stmt);
 	sqlite3_close(db);
@@ -250,14 +251,7 @@ void test_list()
 
 	exit(1);
 }
-void init_log()
-{
-	if (!Log::instance().open_log())  
-	{  
-		std::cout << "Log::open_log() failed" << std::endl;  
-		exit(-1);
-	} 
-}
+
 
 int init_server_socket()
 {
@@ -602,14 +596,24 @@ int main(int argc, char* argv[])
 
 	//test_list();
 
+	int log_level = 3;//default WARN_LOG_LEVEL
+	if(argc == 2) {
+		log_level = atoi(argv[1]);	
+	}
+	printf("===>log_level = %d\n", log_level);
 	//打开日志  
-	init_log();
+	if (!Log::instance().open_log(log_level, argv[0]))  
+	{  
+		std::cout << "Log::open_log() failed" << std::endl;  
+		exit(-1);
+	} 
 
 	//初始化每个单元的类型 
 	init_unit_info();
 
 	//初始化串口
-	init_serial( atoi(argv[1]) );
+	//init_serial( atoi(argv[1]) );
+	init_serial( 3 );
 
 	//初始化网络
 	listenfd = init_server_socket();

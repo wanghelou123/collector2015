@@ -10,13 +10,13 @@
 #		用"replacement" 替换他空。"pattern"和“replacement”中可以使用能配置符
 TARGET = MbtcpServer MbtcpClient passthrough_tool
 all: $(TARGET)
-#CROSS_COMPILE = arm-linux-
+CROSS_COMPILE = arm-linux-
 CC		=	$(CROSS_COMPILE)g++
 STRIP	=	$(CROSS_COMPILE)strip
-CFLAGS	=	-W  -g
+CFLAGS	=	-W
 INCS   +=	-I/work/src_packages/sqlite-autoconf-3071401/dist-sqlite3/include 
-#INCS 	+=  -I/usr/local/arm/4.2.2-eabi/include
-#LIBS	+=	-L/work/src_packages/sqlite-autoconf-3071401/dist-sqlite3/lib 
+INCS 	+=  -I/usr/local/arm/4.2.2-eabi/include
+LIBS	+=	-L/work/src_packages/sqlite-autoconf-3071401/dist-sqlite3/lib 
 LIBS	+=	-lsqlite3 
 LIBS 	+=  -llog4cplus
 LIBS 	+=  -lpthread

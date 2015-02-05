@@ -40,6 +40,7 @@ public:
 	~Convert();
 	int get_node_data(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE]);
 	int asr_to_ad_channel(int sensor_num, int channel_num, float asr_val);
+	int get_unit_type(int sensor_id);
 private:
 	int init_board_flag();
 	int init_board_info();

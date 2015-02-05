@@ -42,22 +42,23 @@ int init_server_socket()
 	serveraddr.sin_port=htons(503);
 	int option=1;
 	if(setsockopt(listenfd, SOL_SOCKET,SO_REUSEADDR, &option, sizeof(int) ) < 0){
-		perror("setsockopt ");
+		FATAL("setsockopt ");
 		exit(-1);
 	}
 
 	if( bind(listenfd,(sockaddr *)&serveraddr, sizeof(serveraddr)) ){
-		perror("bind");
+		FATAL("bind");
 		exit(-1);
 	}
 
-	if( listen(listenfd, 2) < 0){
+	if( listen(listenfd, 5) < 0){
 		FATAL("listen error");
 		exit(-1);
 	}
 
 	return listenfd;
 }
+
 void clean_socket_buf(int skt) 
 {
 	struct timeval tmOut;
@@ -128,8 +129,6 @@ void process_new_client(int epfd, int listenfd)
 		return;
 	}
 
-	//char *str = inet_ntoa(clientaddr.sin_addr);
-	//DEBUG("accapt a connection from " << str <<":"<< ntohs(clientaddr.sin_port));
 	struct sockaddr_in peeraddr;
 	socklen_t peeraddrlen;
 	if(getpeername(connfd, (struct sockaddr*)&peeraddr, &peeraddrlen) == -1){
@@ -152,9 +151,9 @@ int  process_socket_data(int epfd, int sockfd, ModbusTcp & modbus_tcp)
 	unsigned char line[MAXLINE];
 	if ( (n = recv(sockfd, line, MAXLINE, 0)) <= 0) {
 		if(0 == n){
-			DEBUG("recv return 0, the peer has performed an orderly shutdown.\n");
+			DEBUG("recv return 0, the peer has performed an orderly shutdown.");
 		}else{
-			DEBUG("recv from sockfd error ECONNRESET. will close the socket\n");
+			DEBUG("recv from sockfd error ECONNRESET. will close the socket.");
 		}
 		int j=0;
 		for(j=0; j<CLI_NUM; j++){
@@ -206,15 +205,20 @@ err:
 
 }
 
-int main()
+int main(int argc, char *argv[])
 {
 	int i, listenfd,epfd,nfds;
 
 	//显示程序版本信息
 	show_prog_info();
 
+	int log_level = 3;//default WARN_LOG_LEVEL
+	if(argc == 2) {
+		log_level = atoi(argv[1]);	
+	}
+	printf("===>log_level = %d\n", log_level);
 	// 打开日志  
-	if (!Log::instance().open_log())  
+	if (!Log::instance().open_log(log_level, argv[0]))  
 	{  
 		std::cout << "Log::open_log() failed" << std::endl;  
 		exit(-1);
@@ -234,8 +238,7 @@ int main()
 
 	
 	while(1){
-		//nfds=epoll_wait(epfd,events,EVENT_NUM,tcp_timeout*60*1000);
-		nfds=epoll_wait(epfd,events,EVENT_NUM, 30*60*1000);
+		nfds = epoll_wait(epfd, events, EVENT_NUM, 30*60*1000);
 
 		for(i=0;i<nfds;++i){
 			if(events[i].data.fd == listenfd){
@@ -250,14 +253,6 @@ int main()
 				}
 			}
 		}
-#if 0
-		int n = mcu.Read(recv_buf);
-		for(int i = 0; i<n; i++){
-			printf("%.2x ", recv_buf[i]);
-		}printf("\n");
-		::sleep(2);
-#endif
-		
 	}
 
 	DEBUG("I am the MbtcpServer");

@@ -22,25 +22,33 @@ int Convert::get_node_data(int sensor_number, unsigned char (&buffer)[BUFFER_SIZ
 	unsigned char recv_buf[1024];
 	unsigned char node_buf[6][BUFFER_SIZE];
 	int n = mcu.Read(recv_buf);
-
-	int node_type = recv_buf[2];
-	int node_len = recv_buf[3];
-	int node_bytes=0;
-	unsigned char *p = recv_buf+4;
+	int node_type=0, node_len=0, node_bytes=0;
+	unsigned char *p = recv_buf+2;
 	int ret = 0;
-	for(int i=0; i<6; i++) {
+	memset(node_buf,0, 6*BUFFER_SIZE);
+
+	for(int i=0; i<6;) {
+		node_type = *p;
+		node_len  = *(p+1);
+		p+=2;
 		switch (node_type) {
-			case 0x01: DEBUG("node_type: AIN, total "<< node_len << " bytes."); break;
-			case 0x02: DEBUG("node_type: AOUT, total "<< node_len << " bytes."); break;
-			case 0x03: DEBUG("node_type: DIN, total "<< node_len << " bytes."); break;
-			case 0x04: DEBUG("node_type: DOUT, total "<< node_len << " bytes."); break;
+			case 0x01: DEBUG("node_type: AIN,  total "<< node_len << " bytes, "<< node_len/32*8 << " channels"); break;
+			case 0x02: DEBUG("node_type: AOUT, total "<< node_len << " bytes, "<< node_len/16*4<< " channels"); break;
+			case 0x03: DEBUG("node_type: DIN,  total "<< node_len << " bytes, "<< node_len/8*8<< " channels"); break;
+			case 0x04: DEBUG("node_type: DOUT, total "<< node_len << " bytes, "<< node_len/4*4<< " channels"); break;
 		}
 		
-		if(node_type%2 == 0){ 
-			node_bytes = 16; //模拟量输出，开关量输出 
-		}else {
-			node_bytes = 32;//模拟量采集，开关量采集
+		if(node_type == 1){			//模拟量采集
+			node_bytes = 32; 
+		}else if(node_type == 2){	//模拟量输出
+			node_bytes = 16;		
+		}else if(node_type == 3) {	//开关量采集
+			node_bytes = 8;		
+		}else if(node_type ==4) {	//开关量输出
+			node_bytes = 4;		
 		}
+		
+		DEBUG("node_len/node_bytes = "<< node_len/node_bytes);
 		switch(node_len/node_bytes){
 			case 1:
 				memcpy(node_buf[i+0], p+node_bytes*0, node_bytes);
@@ -76,20 +84,30 @@ int Convert::get_node_data(int sensor_number, unsigned char (&buffer)[BUFFER_SIZ
 				memcpy(node_buf[i+5], p+node_bytes*5, node_bytes);
 				break;
 		}
+
 		i += node_len/node_bytes;
 		p += node_len;
-		node_type = *p;
-		node_len = *(p+1);
 	}
 
 	//将AD原始值转换为模拟值
 	ret = ad_to_asr(sensor_number, node_buf[sensor_number - 1]);
 
 	//将模拟值转换为物理值
-	if(flags.sensor_conf){
+	int unit_type = 0;
+	switch(sensor_number) {
+		case 0x01: unit_type = flags.unit1_type; break;
+		case 0x02: unit_type = flags.unit2_type; break;
+		case 0x03: unit_type = flags.unit3_type; break;
+		case 0x04: unit_type = flags.unit4_type; break;
+		case 0x05: unit_type = flags.unit5_type; break;
+		case 0x06: unit_type = flags.unit6_type; break;
+		default: FATAL(__func__<<":error sensor_number");
+	}
+	if(flags.sensor_conf && (unit_type == 1)){
 		ret = asr_to_phy(sensor_number, node_buf[sensor_number - 1]);
 	}
-	memcpy(buffer, node_buf[sensor_number - 1], BUFFER_SIZE);
+	memset(buffer, 0, sizeof(buffer));
+	memcpy(buffer, node_buf[sensor_number - 1], ret);
 
 	return ret;
 }
@@ -213,6 +231,8 @@ int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
 		default: FATAL(__func__<<":error sensor_number");
 	}
 
+	DEBUG(__func__<< ": sensor_number:"<<sensor_number<< ", unit_type:"<<unit_type<<", unit_sub_type:"<<unit_sub_type);
+
 	switch (unit_type) {
 		case 0x01: {//模拟信号采集(电流&电压)
 			for(int channel_number = 0; channel_number<8; channel_number++,p+=4)
@@ -226,7 +246,7 @@ int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
 			}
 			memset(buffer, '\0', sizeof(buffer));
 			for(int i=0;i<32;i+=4){
-				buffer[i+0] = sensor_type+i;//数据组名称
+				buffer[i+0] = sensor_type+i/4;//数据组名称
 				buffer[i+1] = 0x80 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
 				buffer[i+2] = ((int)(asr_val[i]*myboard[(sensor_number-1)*8+i].decimal_num)>>16)&0xFF;
 				buffer[i+3] = ((int)(asr_val[i]*myboard[(sensor_number-1)*8+i].decimal_num))&0xFF;
@@ -235,41 +255,52 @@ int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
 			break;
 		}
 
-		case 0x02://模拟信号输出(电流): 0xD0 ~ 0xD5
+		case 0x02://模拟信号输出(电流): 0xD0 ~ 0xD3
 			for(int channel_number = 0; channel_number<6; channel_number++,p+=4)
 				asr_val[channel_number] = ad_to_asr_channel((sensor_number-1)*8+channel_number, (p[3]<<24)|(p[2]<<16)|(p[1]<8)|(p[0]), unit_sub_type);
 			memset(buffer, '\0', sizeof(buffer));
-			for(int i=0;i<24;i+=4){
-				buffer[i+0] = 0xD0+i;//数据组名称
+			for(int i=0;i<16;i+=4){
+				buffer[i+0] = 0xD0+i/4;//数据组名称
 				buffer[i+1] = 0x80 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
 				buffer[i+2] = ((int)(asr_val[i]*myboard[(sensor_number-1)*8+i].decimal_num)>>16)&0xFF;
 				buffer[i+3] = ((int)(asr_val[i]*myboard[(sensor_number-1)*8+i].decimal_num))&0xFF;
 			}
-			ret = 24;
+			ret = 16;
 			break;
 
 		case 0x03: {//开关量输入:0xB1 ~ 0xB8
 			unsigned char tmp_buffer[32];
 			for(int i=0;i<32;i+=4){
-				tmp_buffer[i+0] = 0xB1+i;//数据组名称
+				tmp_buffer[i+0] = 0xB1+i/4;//数据组名称
 				tmp_buffer[i+1] = 0x40;//数据组格式
-				tmp_buffer[i+2] = 0x00;
-				tmp_buffer[i+3] = buffer[i/4];
+				if(1 ==  buffer[i/4]){
+					tmp_buffer[i+2] = 0xFF;
+					tmp_buffer[i+3] = 0xFF;
+				}else {
+					tmp_buffer[i+2] = 0x00;
+					tmp_buffer[i+3] = 0x00;
+				}
 			}
 			memcpy(buffer, tmp_buffer, sizeof(tmp_buffer));
 			ret = 32;
 			break;
 		}
-		case 0x04: {//开关量输出:0xA1 ~ 0xA6
-			unsigned char tmp_buffer[24];
-			for(int i=0;i<24;i+=4){
-				tmp_buffer[i+0] = 0xA1+i;//数据组名称
+		case 0x04: {//开关量输出:0xA1 ~ 0xA4
+			unsigned char tmp_buffer[16];
+			for(int i=0;i<16;i+=4){
+				tmp_buffer[i+0] = 0xA1+i/4;//数据组名称
 				tmp_buffer[i+1] = 0x40;//数据组格式
-				tmp_buffer[i+2] = 0x00;
-				tmp_buffer[i+3] = buffer[i/4];
+				if(1 ==  buffer[i/4]){
+					tmp_buffer[i+2] = 0xFF;
+					tmp_buffer[i+3] = 0xFF;
+				}else {
+					tmp_buffer[i+2] = 0x00;
+					tmp_buffer[i+3] = 0x00;
+				}
 			}
+
 			memcpy(buffer, tmp_buffer, sizeof(tmp_buffer));
-			ret = 24;
+			ret = 16;
 			break;
 		}
 	}
@@ -325,27 +356,9 @@ float Convert::ad_to_asr_channel(int channel_num, int ad_val,int asr_type)
 int Convert::asr_to_phy(int sensor_number,unsigned char (&buffer)[BUFFER_SIZE])
 {
 	int unit_type=0;
-	int unit_sub_type=0;
-	int channel_number = 0;
+	int channel_number = 8;
 	int ret=0;
 	unsigned char *p = buffer;
-	switch(sensor_number) {
-		case 0x01: unit_type = flags.unit1_type; unit_sub_type = flags.unit1_sub_type; break;
-		case 0x02: unit_type = flags.unit2_type; unit_sub_type = flags.unit2_sub_type; break;
-		case 0x03: unit_type = flags.unit3_type; unit_sub_type = flags.unit3_sub_type; break;
-		case 0x04: unit_type = flags.unit4_type; unit_sub_type = flags.unit4_sub_type; break;
-		case 0x05: unit_type = flags.unit5_type; unit_sub_type = flags.unit5_sub_type; break;
-		case 0x06: unit_type = flags.unit6_type; unit_sub_type = flags.unit6_sub_type; break;
-		default: FATAL(__func__<<":error sensor_number");
-	}
-	switch (unit_type) {
-		case 0x01: channel_number = 8; break;
-		case 0x02: channel_number = 6; break;
-		case 0x03: channel_number = 8; break;
-		case 0x04: channel_number = 6; break;
-		default: FATAL(__func__<<":error unit_type");
-	}
-
 	int four_bytes_count = 0;
 	for(int i=0,j=0; i<channel_number; i++, j++) {
 		channel_val[i] = asr_to_phy_channel((sensor_number-1)*8+i, asr_val[i]);	
@@ -387,4 +400,21 @@ int Convert::asr_to_ad_channel(int sensor_num, int channel_num, float asr_val)
 	ad_val =(int)((myboard[i].ad_fixedpoint4-myboard[i].ad_fixedpoint1)*(asr_val - 4) / (20 -4) + myboard[i].ad_fixedpoint1);
 
 	return ad_val;
+}
+
+int Convert::get_unit_type(int sensor_id)
+{
+	int unit_type = 0;
+	switch (sensor_id) {
+		case 0x01: unit_type = flags.unit1_type; break;
+		case 0x02: unit_type = flags.unit2_type; break;
+		case 0x03: unit_type = flags.unit3_type; break;
+		case 0x04: unit_type = flags.unit4_type; break;
+		case 0x05: unit_type = flags.unit5_type; break;
+		case 0x06: unit_type = flags.unit6_type; break;
+		default: FATAL("invalid sensor_id:"<< sensor_id ); break;
+	}
+
+	return unit_type;
+	
 }

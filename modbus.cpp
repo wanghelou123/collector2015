@@ -3,10 +3,6 @@
 #include "Log.h"
 #define MAXLINE 80
 struct DeivceInfo{
-	int ain_channel_num;
-	int aout_channel_num;
-	int din_channel_num;
-	int dout_channel_num;
 	char dev_ip[20];
 	char dev_mask[20];
 	char dev_gateway[20];
@@ -412,22 +408,24 @@ int ModbusTcp::read_register(unsigned char (&tcp_modbus_buf)[256])
 //模拟量、 继电器输出
 bool ModbusTcp::relay_output(int sensor_id, int channel_id,int control_type,  int data)
 {
-	DEBUG(__func__<< " sensor_id:"<<sensor_id << " channel_id:"<< channel_id<<" data:"<<data);
-	int zigbee_node_start = collect_board.ain_channel_num/8 + collect_board.aout_channel_num/4 + collect_board.din_channel_num/8+1;
-	int zigbee_node_end = collect_board.ain_channel_num/8 + collect_board.aout_channel_num/4 + collect_board.din_channel_num/8 + collect_board.dout_channel_num/4;
-
-	printf("collect_board.ain_channel_num=%d\n", collect_board.ain_channel_num);
-	printf("collect_board.aout_channel_num=%d\n", collect_board.aout_channel_num);
-	printf("collect_board.din_channel_num=%d\n", collect_board.din_channel_num);
-	printf("collect_board.dout_channel_num=%d\n", collect_board.dout_channel_num);
-	if(sensor_id > 6 || sensor_id < zigbee_node_start || sensor_id > zigbee_node_end) {
-		FATAL("zigbee_node_start="<<zigbee_node_start<<", zigbee_node_end:"<< zigbee_node_end);
-		return false;
+	DEBUG(__func__<< " sensor_id:"<<sensor_id << " channel_id:"<< channel_id<<" control_type:"<< control_type<<" data:"<<data);
+	int unit_type = 0;
+	int unit_find_count=0;
+	for(int i=0; i< sensor_id; i++) {
+		unit_type = conver.get_unit_type(i+1);
+		//printf("unit_type = %d, unit_find_count = %d\n", unit_type, unit_find_count);
+		if(control_type == unit_type) {
+			unit_find_count++;
+		}
 	}
+	channel_id += (--unit_find_count)*4;
+
+	//printf("channel_id = %d\n", channel_id);
+
 	unsigned char send_buf[1024] = {0x01,0x05};
 	unsigned char recv_buf[1024] = {0x00};
-	send_buf[2]= control_type; //控制类型，开关量输出
-	send_buf[3]= sensor_id - zigbee_node_start + channel_id;//通道编号
+	send_buf[2]= control_type;  //控制类型，开关量 or 模拟量
+	send_buf[3]= channel_id;	//通道编号
 	send_buf[4]= (data>>24)&0xFF;
 	send_buf[5]= (data>>16)&0xFF;
 	send_buf[6]= (data>>8)&0xFF;
@@ -453,7 +451,7 @@ int ModbusTcp::write_register(unsigned char (&tcp_modbus_buf)[256])
 	unsigned char channel_type;
 	int channel_num = tcp_modbus_buf[12]/4;
 	int start_addr = MAKEWORD(tcp_modbus_buf[8], tcp_modbus_buf[9]);
-	unsigned char *p = tcp_modbus_buf + 15;
+	unsigned char *p = tcp_modbus_buf + 13;
 	unsigned char right_buf[12];
 	unsigned char error_buf[9];
 	memcpy(right_buf, tcp_modbus_buf, sizeof(right_buf));
@@ -484,6 +482,7 @@ int ModbusTcp::write_register(unsigned char (&tcp_modbus_buf)[256])
 				}else {
 					FATAL("invalid channel data");
 					printf("%x %x %x %x %x\n", (0xA0|(i+i+1)),p[0], p[1], p[2], p[3] );
+					error_flag=1;
 				}
 				break;
 			case 0xD0: //模拟量输出

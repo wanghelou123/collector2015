@@ -30,7 +30,7 @@ class Log
 {  
 	public:  
 		// 打开日志  
-		bool open_log();  
+		bool open_log(int Log_level, char name[]);
 
 		// 获得日志实例  
 		static Log& instance();  

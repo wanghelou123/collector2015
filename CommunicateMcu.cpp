@@ -39,7 +39,6 @@ CommunicateMcu::~CommunicateMcu()
 int CommunicateMcu::Read(unsigned char (&recv_buf)[1024])
 {
 	unsigned char send_buf[] = {0x01, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0xF1, 0xBA};
-	//unsigned char recv_buf[512];
 	int n = send(sockfd, send_buf, sizeof(send_buf), MSG_NOSIGNAL);
 	struct timeval tmOut;
 	tmOut.tv_sec = 2;
