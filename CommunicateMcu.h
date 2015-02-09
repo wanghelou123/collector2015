@@ -12,5 +12,6 @@ private:
 	int sockfd;
 	char server_ip[128];
 	int server_port;
+	int	socket_status;//0:disconnect; 1:connect
 };
 #endif

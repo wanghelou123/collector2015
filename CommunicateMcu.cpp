@@ -38,15 +38,26 @@ CommunicateMcu::~CommunicateMcu()
 
 int CommunicateMcu::Read(unsigned char (&recv_buf)[1024])
 {
+	if(this->socket_status == 0) {
+		if(init_sock() == -1){
+			FATAL("init socket error!");
+			return -1;
+		}
+	}
 	unsigned char send_buf[] = {0x01, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0xF1, 0xBA};
-	int n = send(sockfd, send_buf, sizeof(send_buf), MSG_NOSIGNAL);
+	int  nRet;
 	struct timeval tmOut;
 	tmOut.tv_sec = 2;
 	tmOut.tv_usec = 0;
 	fd_set fds;
 	FD_ZERO(&fds);
 	FD_SET(sockfd, &fds);
-	int  nRet;
+	int n = send(sockfd, send_buf, sizeof(send_buf), MSG_NOSIGNAL);
+	if(-1 == n) {
+		FATAL("send:"<< strerror(errno));
+		this->socket_status = 0;
+		return -1;
+	}
 
 	nRet= select(FD_SETSIZE, &fds, NULL, NULL, &tmOut);
 	if(nRet== 0){
@@ -57,18 +68,35 @@ int CommunicateMcu::Read(unsigned char (&recv_buf)[1024])
 		return 0;
 	}
 	n = recv(sockfd, recv_buf, 1024, 0);
-	DEBUG("recv "<< n << " bytes from socket");
-	//	for(int i = 0; i<n; i++){
-	//		printf("%.2x ", recv_buf[i]);
-	//	}printf("\n");
+	if(n==0){
+		NOTICE("recv: the peer has  performed  an  orderly shutdown.");
+	}else if(n<0){
+		FATAL("recv:an error occurred."<<strerror(errno));
+	}
+	if(n<=0) {
+		this->socket_status = 0;	
+		shutdown(sockfd, SHUT_WR);
+		close(sockfd);
+	}
 
-	return n;
+	return (n>0) ? n : -1;
 
 }
 
 int CommunicateMcu::Write(unsigned char (&send_buf)[1024], int size, unsigned char (&recv_buf)[1024])
 {
+	if(this->socket_status == 0) {
+		if(init_sock() == -1){
+			FATAL("init socket error!");
+			return -1;
+		}
+	}
 	int n = send(sockfd, send_buf, size, MSG_NOSIGNAL);
+	if(-1 == n) {
+		FATAL("send:"<< strerror(errno));
+		this->socket_status = 0;
+		return -1;
+	}
 	struct timeval tmOut;
 	tmOut.tv_sec = 3;
 	tmOut.tv_usec = 0;
@@ -91,9 +119,14 @@ int CommunicateMcu::Write(unsigned char (&send_buf)[1024], int size, unsigned ch
 		return 0;
 	}
 	n = recv(sockfd, recv_buf, 1024, 0);
+	if(n==0){
+		NOTICE("recv: the peer has  performed  an  orderly shutdown.");
+	}else if(n<0){
+		FATAL("recv:an error occurred."<<strerror(errno));
+	}
 	DEBUG("recv "<< n << " bytes from socket");
-	
-	return n;
+
+	return (n>0) ? n : -1;
 }
 
 int CommunicateMcu::init_sock()
@@ -115,6 +148,12 @@ int CommunicateMcu::init_sock()
 	servaddr.sin_port = htons(server_port);
 
 	int ret = connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+
+	if(0 == ret) {
+		this->socket_status = 1;
+	}else {
+		this->socket_status = 0;
+	}
 
 	return ret;
 

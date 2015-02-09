@@ -380,6 +380,7 @@ int ModbusTcp::read_register(unsigned char (&tcp_modbus_buf)[256])
 	DEBUG(__func__);
 	int start_addr = MAKEWORD(tcp_modbus_buf[8], tcp_modbus_buf[9]);
 	int data_num = MAKEWORD(tcp_modbus_buf[10], tcp_modbus_buf[11]);
+	int ret = 9+data_num*2;
 	int uid = tcp_modbus_buf[6];
 	memset(tcp_modbus_buf+9, '\0', sizeof(tcp_modbus_buf)-9);
 	tcp_modbus_buf[5] = data_num*2+3;
@@ -387,8 +388,15 @@ int ModbusTcp::read_register(unsigned char (&tcp_modbus_buf)[256])
 
 	if(uid<=6) {
 		unsigned char node_buf[BUFFER_SIZE];
-		conver.get_node_data(uid, node_buf);
-		memcpy(tcp_modbus_buf+9, node_buf+start_addr, data_num*2);
+		int n = conver.get_node_data(uid, node_buf);
+		if(n<0) {
+			tcp_modbus_buf[5] = 0x03;
+			tcp_modbus_buf[7] += 0x80;
+			tcp_modbus_buf[8] = 0x04;
+			ret = 9;	
+		}else{
+			memcpy(tcp_modbus_buf+9, node_buf+start_addr, data_num*2);
+		}
 	}else if(uid == 0xFF) {
 		get_device_info();
 		switch(start_addr&0xFF) {
@@ -402,7 +410,7 @@ int ModbusTcp::read_register(unsigned char (&tcp_modbus_buf)[256])
 
 	}
 
-	return 9+data_num*2;
+	return ret;
 }
 
 //模拟量、 继电器输出
@@ -436,7 +444,7 @@ bool ModbusTcp::relay_output(int sensor_id, int channel_id,int control_type,  in
 	send_buf[8]=((unsigned)crc_calc >>8)&0xFF;
 	send_buf[9]=((unsigned)crc_calc)&0xFF;
 	int n = mcu.Write(send_buf, 10, recv_buf);
-	if(0 != memcmp(send_buf, recv_buf, 10)) {
+	if((n<0) || (0 != memcmp(send_buf, recv_buf, 10))) {
 		FATAL(__func__ <<  " controle relay error");
 		return false;
 	}
@@ -472,11 +480,13 @@ int ModbusTcp::write_register(unsigned char (&tcp_modbus_buf)[256])
 			case 0xA0://开关量输出
 				if((0xA0|((start_addr+2)/2))==p[0] && 0x40==p[1] && 0xFF==p[2] && 0xFF==p[3]) {
 					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 0x04, 0x01)) {
+						error_flag=1;
 						break;
 					}
 				}
 				else if((0xA0|((start_addr+2)/2))==p[0] && 0x40==p[1] && 0x00==p[2] && 0x00==p[3]) {
 					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 0x04, 0x00)) {
+						error_flag=1;
 						break;
 					}
 				}else {
@@ -489,10 +499,12 @@ int ModbusTcp::write_register(unsigned char (&tcp_modbus_buf)[256])
 				if((0xD0|((start_addr+2)/2))==p[0] && 0x83==p[1]) {
 					int ad_val = conver.asr_to_ad_channel(tcp_modbus_buf[6], p[0]&0x0F, ((p[2]<<8)|p[3])/1000);
 					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 0x02, ad_val)) {
+						error_flag=1;
 						break;
 					}
 				}
 				else {
+					error_flag=1;
 					FATAL("invalid channel data");
 					printf("%x %x %x %x %x\n", (0xA0|(i+i+1)),p[0], p[1], p[2], p[3] );
 				}

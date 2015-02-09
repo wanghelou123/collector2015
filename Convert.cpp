@@ -21,11 +21,14 @@ int Convert::get_node_data(int sensor_number, unsigned char (&buffer)[BUFFER_SIZ
 	DEBUG(__func__);
 	unsigned char recv_buf[1024];
 	unsigned char node_buf[6][BUFFER_SIZE];
-	int n = mcu.Read(recv_buf);
-	int node_type=0, node_len=0, node_bytes=0;
-	unsigned char *p = recv_buf+2;
-	int ret = 0;
 	memset(node_buf,0, 6*BUFFER_SIZE);
+	int ret = 0;
+	int node_type=0, node_len=0, node_bytes=0;
+	int n = mcu.Read(recv_buf);
+	if(n<0) {
+		return -1;
+	}
+	unsigned char *p = recv_buf+2;
 
 	for(int i=0; i<6;) {
 		node_type = *p;
@@ -232,11 +235,17 @@ int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
 	}
 
 	DEBUG(__func__<< ": sensor_number:"<<sensor_number<< ", unit_type:"<<unit_type<<", unit_sub_type:"<<unit_sub_type);
+#if 0
+	for(int i=0;i<32;i++){
+		printf("%.2x ", p[i]);
+	}printf("\n");
+	printf("===>ad:%x\n", (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|(p[3]));
+#endif
 
 	switch (unit_type) {
 		case 0x01: {//模拟信号采集(电流&电压)
 			for(int channel_number = 0; channel_number<8; channel_number++,p+=4)
-				asr_val[channel_number] = ad_to_asr_channel((sensor_number-1)*8+channel_number, (p[3]<<24)|(p[2]<<16)|(p[1]<8)|(p[0]), unit_sub_type);
+				asr_val[channel_number] = ad_to_asr_channel((sensor_number-1)*8+channel_number, (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|(p[3]), unit_sub_type);
 
 			int sensor_type = 0x00;
 			if(!unit_sub_type) { //电流信号,0xC0 ~ 0xC7
@@ -245,11 +254,13 @@ int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
 				sensor_type = 0xC8;
 			}
 			memset(buffer, '\0', sizeof(buffer));
-			for(int i=0;i<32;i+=4){
-				buffer[i+0] = sensor_type+i/4;//数据组名称
-				buffer[i+1] = 0x80 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
-				buffer[i+2] = ((int)(asr_val[i]*myboard[(sensor_number-1)*8+i].decimal_num)>>16)&0xFF;
-				buffer[i+3] = ((int)(asr_val[i]*myboard[(sensor_number-1)*8+i].decimal_num))&0xFF;
+			for(int i=0;i<8;i++){
+				printf("asr_val[%d]%f\n", i,asr_val[i] );
+				buffer[i*4+0] = sensor_type+i;//数据组名称
+				buffer[i*4+1] = 0x80 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
+				int val = (int)(asr_val[i]*pow(10, myboard[(sensor_number-1)*8+i].decimal_num));
+				buffer[i*4+2] = (val>>8)&0xFF;
+				buffer[i*4+3] = (val)&0xFF;
 			}
 			ret = 32;
 			break;
@@ -257,13 +268,14 @@ int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
 
 		case 0x02://模拟信号输出(电流): 0xD0 ~ 0xD3
 			for(int channel_number = 0; channel_number<6; channel_number++,p+=4)
-				asr_val[channel_number] = ad_to_asr_channel((sensor_number-1)*8+channel_number, (p[3]<<24)|(p[2]<<16)|(p[1]<8)|(p[0]), unit_sub_type);
+				asr_val[channel_number] = ad_to_asr_channel((sensor_number-1)*8+channel_number, (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|(p[3]), unit_sub_type);
 			memset(buffer, '\0', sizeof(buffer));
-			for(int i=0;i<16;i+=4){
-				buffer[i+0] = 0xD0+i/4;//数据组名称
-				buffer[i+1] = 0x80 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
-				buffer[i+2] = ((int)(asr_val[i]*myboard[(sensor_number-1)*8+i].decimal_num)>>16)&0xFF;
-				buffer[i+3] = ((int)(asr_val[i]*myboard[(sensor_number-1)*8+i].decimal_num))&0xFF;
+			for(int i=0;i<4;i++){
+				buffer[i*4+0] = 0xD0+i;//数据组名称
+				buffer[i*4+1] = 0x80 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
+				int val = (int)(asr_val[i]*pow(10, myboard[(sensor_number-1)*8+i].decimal_num));
+				buffer[i*4+2] = (val>>8)&0xFF;
+				buffer[i*4+3] = (val)&0xFF;
 			}
 			ret = 16;
 			break;
@@ -329,6 +341,14 @@ float Convert::ad_to_asr_channel(int channel_num, int ad_val,int asr_type)
 	switch(flags.fixed_point_number) {
 		case 2:
 			result = (asr_max-asr_min)*(ad_val-myboard[i].ad_fixedpoint1) / (myboard[i].ad_fixedpoint4-myboard[i].ad_fixedpoint1) + asr_min;
+#if 0
+			printf("asr_max:%f\n", asr_max);
+			printf("asr_min:%f\n", asr_min);
+			printf("ad_val:%d\n", ad_val);
+			printf("ad_fixedpoint1:%d\n", myboard[i].ad_fixedpoint1);
+			printf("ad_fixedpoint4:%d\n", myboard[i].ad_fixedpoint4);
+			printf("asr val:%f\n", result);
+#endif
 			break;
 		case 3:
 			if(ad_val < myboard[i].ad_fixedpoint2) {
@@ -364,15 +384,15 @@ int Convert::asr_to_phy(int sensor_number,unsigned char (&buffer)[BUFFER_SIZE])
 		channel_val[i] = asr_to_phy_channel((sensor_number-1)*8+i, asr_val[i]);	
 		buffer[j*4+0] = myboard[(sensor_number-1)*8+i].channel_type;//数据组名称
 		buffer[j*4+1] = 0x80 +  myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
-		buffer[j*4+2] = (channel_val[i]>>16)&0xFF;
+		buffer[j*4+2] = (channel_val[i]>>8)&0xFF;
 		buffer[j*4+3] = (channel_val[i])&0xFF;
 		if(channel_val[i]>0xFFFF) {//两个数据组
 			four_bytes_count ++;
-			buffer[j*4+1] = 0x80 + 0x20 + 0x01 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
+			buffer[j*4+1] = (1<<7) + (1<<5) + (0<<4) + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式,低2字节
 			buffer[j*4+4] = myboard[(sensor_number-1)*8+i].channel_type;//数据组名称
-			buffer[j*4+5] = 0x80 + 0x20 + 0x00 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
-			buffer[j*4+6] = (channel_val[i]>>16)&0xFF;
-			buffer[j*4+7] = (channel_val[i])&0xFF;
+			buffer[j*4+5] = (1<<7) + (1<<5) + (1<<4) + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式，高2字节
+			buffer[j*4+6] = (channel_val[i]>>24)&0xFF;
+			buffer[j*4+7] = (channel_val[i]>>16)&0xFF;
 			j++;
 		
 		}
