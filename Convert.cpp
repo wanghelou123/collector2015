@@ -255,7 +255,7 @@ int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
 			}
 			memset(buffer, '\0', sizeof(buffer));
 			for(int i=0;i<8;i++){
-				printf("asr_val[%d]%f\n", i,asr_val[i] );
+				DEBUG("asr_val["<<i<<"] = "<< asr_val[i]);
 				buffer[i*4+0] = sensor_type+i;//数据组名称
 				buffer[i*4+1] = 0x80 + myboard[(sensor_number-1)*8+i].decimal_num;//数据组格式
 				int val = (int)(asr_val[i]*pow(10, myboard[(sensor_number-1)*8+i].decimal_num));

@@ -26,7 +26,7 @@ MbtcpServer:MbtcpServer.o Log.o CommunicateMcu.o modbus.o Convert.o
 	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^ 
 	$(STRIP) $@
 
-MbtcpClient:MbtcpClient.o Log.o
+MbtcpClient:MbtcpClient.o Log.o CommunicateMcu.o modbus.o Convert.o
 	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^
 	$(STRIP) $@
 
