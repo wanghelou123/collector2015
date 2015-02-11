@@ -211,7 +211,7 @@ err:
 int main(int argc, char * argv[])
 {
 	
-	if(argc != 2) {
+	if(argc != 3) {
 		printf("usage: %s <hostname or IPaddr> <port>\n", strrchr(argv[0], '/')+1);	
 		exit(-1);
 	}

@@ -171,10 +171,11 @@ int  process_socket_data(int epfd, int sockfd, ModbusTcp & modbus_tcp)
 			return 0;
 		}
 
-		printf("recvd request buf: ");
+		char tmp_buffer[128]={0};
 		for(int i = 0; i< n; i++) {
-			printf("%.2x ", line[i]);
-		}printf("\n");
+			snprintf(tmp_buffer+i*3, sizeof(tmp_buffer), "%.2x ", (char)line[i]);
+		}
+		DEBUG("recvd request buf: "<< tmp_buffer);
 
 		n = modbus_tcp.process_modbus_data(line);
 	
