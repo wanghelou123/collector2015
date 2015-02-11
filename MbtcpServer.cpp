@@ -25,12 +25,12 @@ static int clifd_array[CLI_NUM]={0};
 
 void show_prog_info()
 {
-	cout << "\ncollector2015 Software, Inc."<<endl;
+	cout << "collector2015 Software, Inc."<<endl;
 	cout << "Program name MbtcpServer run with hardware v1." << endl;
 	cout << "Compiled on " << __DATE__ << " at "<< __TIME__ <<endl;
 }
 
-int init_server_socket()
+int init_server_socket(int server_port)
 {
 	int listenfd;
 	struct sockaddr_in serveraddr;
@@ -39,7 +39,7 @@ int init_server_socket()
 	bzero(&serveraddr, sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serveraddr.sin_port=htons(503);
+	serveraddr.sin_port=htons(server_port);
 	int option=1;
 	if(setsockopt(listenfd, SOL_SOCKET,SO_REUSEADDR, &option, sizeof(int) ) < 0){
 		FATAL("setsockopt ");
@@ -209,23 +209,22 @@ int main(int argc, char *argv[])
 {
 	int i, listenfd,epfd,nfds;
 
+	if(argc != 2) {
+		printf("usage: %s <port>\n", strrchr(argv[0], '/')+1);	
+		exit(-1);
+	}
+
 	//显示程序版本信息
 	show_prog_info();
 
-	int log_level = 3;//default WARN_LOG_LEVEL
-	if(argc == 2) {
-		log_level = atoi(argv[1]);	
-	}
-	printf("===>log_level = %d\n", log_level);
 	// 打开日志  
-	if (!Log::instance().open_log(log_level, argv[0]))  
+	if (!Log::instance().open_log(argv[0]))  
 	{  
 		std::cout << "Log::open_log() failed" << std::endl;  
 		exit(-1);
 	} 
-
 	//初始化网络
-	listenfd = init_server_socket();
+	listenfd = init_server_socket(atoi(argv[1]));
 	
 	//创建ModbusTcp对象
 	ModbusTcp modbus_tcp; 

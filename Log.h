@@ -30,7 +30,7 @@ class Log
 {  
 	public:  
 		// 打开日志  
-		bool open_log(int Log_level, char name[]);
+		bool open_log(char name[]);
 
 		// 获得日志实例  
 		static Log& instance();  
@@ -39,12 +39,14 @@ class Log
 
 	private:  
 		Log();  
-
+		bool init_default_config_file() ;
 		virtual ~Log();  
 
 		//log文件路径及名称  
 		char _log_path[PATH_SIZE];  
+		char _conf_path[PATH_SIZE];  
 		char _log_name[PATH_SIZE];  
+		char _conf_name[PATH_SIZE];  
 };  
 #endif // !defined(AFX_LOG_H__B87F71E3_FFAE_4CFA_A528_3F4F2FF7D69E__INCLUDED_)  
 

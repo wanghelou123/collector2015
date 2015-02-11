@@ -14,7 +14,7 @@ using namespace std;
 
 void show_prog_info()
 {
-	cout << "\ncollector2015 Software, Inc."<<endl;
+	cout << "collector2015 Software, Inc."<<endl;
 	cout << "Program name MbtcpClient run with hardware v1." << endl;
 	cout << "Compiled on " << __DATE__ << " at "<< __TIME__ <<endl;
 }
@@ -210,16 +210,16 @@ err:
 
 int main(int argc, char * argv[])
 {
+	
+	if(argc != 2) {
+		printf("usage: %s <hostname or IPaddr> <port>\n", strrchr(argv[0], '/')+1);	
+		exit(-1);
+	}
 	//显示程序版本信息
 	show_prog_info();
 
-	int log_level = 3;//default WARN_LOG_LEVEL
-	if(argc == 2) {
-		log_level = atoi(argv[1]);	
-	}
-	printf("===>log_level = %d\n", log_level);
 	// 打开日志  
-	if (!Log::instance().open_log(log_level, argv[0]))  
+	if (!Log::instance().open_log(argv[0]))  
 	{  
 		std::cout << "Log::open_log() failed" << std::endl;  
 		exit(-1);
@@ -229,13 +229,11 @@ int main(int argc, char * argv[])
 	ModbusTcp modbus_tcp; 
 
 	int sockfd;
-	char server_ip[]="192.168.0.231";
-	int server_port = 502;
 	int ret = 0;
 	for(;;) {
 		while(1) { 
-			if((sockfd = connect_to_server(server_ip, server_port)) == -1) {
-				NOTICE("connect to "<< server_ip<<":"<<server_port<<" failed!");
+			if((sockfd = connect_to_server(argv[1], atoi(argv[2]) )) == -1) {
+				NOTICE("connect to "<< argv[1]<<":"<<argv[2]<<" failed!");
 				::sleep(30);
 			}else {
 				break;	

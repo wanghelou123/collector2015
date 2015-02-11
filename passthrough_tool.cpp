@@ -585,24 +585,14 @@ int main(int argc, char* argv[])
 	int pipe_fd[2];
 	ssize_t n;
 	unsigned char line[MAXLINE]; 
-	if ( 2 != argc )
-	{
-		fprintf(stderr,"Usage:%s number[1-3]\n",argv[0]);
-		exit(-1);
-	}
 
 	//显示程序版本信息
 	show_prog_info();
 
 	//test_list();
 
-	int log_level = 3;//default WARN_LOG_LEVEL
-	if(argc == 2) {
-		log_level = atoi(argv[1]);	
-	}
-	printf("===>log_level = %d\n", log_level);
 	//打开日志  
-	if (!Log::instance().open_log(log_level, argv[0]))  
+	if (!Log::instance().open_log(argv[0]))  
 	{  
 		std::cout << "Log::open_log() failed" << std::endl;  
 		exit(-1);
