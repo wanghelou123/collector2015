@@ -8,7 +8,7 @@
 # $<:	第一个依赖的文件名
 # $(patsubst pattern, replacement, text):	寻找"text"中符合格式"pattern"的字，　
 #		用"replacement" 替换他空。"pattern"和“replacement”中可以使用能配置符
-TARGET = MbtcpServer MbtcpClient passthrough_tool
+TARGET = passthrough_tool MbtcpServer MbtcpClient MbrtuServer
 all: $(TARGET)
 CROSS_COMPILE = arm-linux-
 CC		=	$(CROSS_COMPILE)g++
@@ -22,6 +22,10 @@ LIBS 	+=  -llog4cplus
 LIBS 	+=  -lpthread
 LIBS 	+=  -lm
 
+passthrough_tool: passthrough_tool.o Log.o serial.o
+	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^ 
+	$(STRIP) $@
+
 MbtcpServer:MbtcpServer.o Log.o CommunicateMcu.o modbus.o Convert.o
 	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^ 
 	$(STRIP) $@
@@ -30,9 +34,10 @@ MbtcpClient:MbtcpClient.o Log.o CommunicateMcu.o modbus.o Convert.o
 	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^
 	$(STRIP) $@
 
-passthrough_tool: passthrough_tool.o Log.o serial.o
-	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^ 
+MbrtuServer:Log.o serial.o MbrtuServer.o ModbusRtu.o CommunicateMcu.o Convert.o
+	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^
 	$(STRIP) $@
+
 
 %.o:%.cpp
 	$(CC) $(CFLAGS)  $(INCS) -c -o $@ $<

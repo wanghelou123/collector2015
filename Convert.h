@@ -41,12 +41,13 @@ public:
 	int get_node_data(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE]);
 	int asr_to_ad_channel(int sensor_num, int channel_num, float asr_val);
 	int get_unit_type(int sensor_id);
+	float ad_to_asr_channel(int channel_num, int ad_val,int asr_type);
+	int get_channel_type(int channel_number);
 private:
 	int init_board_flag();
 	int init_board_info();
 	int ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE]);
 	int asr_to_phy(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE]);
-	float ad_to_asr_channel(int channel_num, int ad_val,int asr_type);
 	int asr_to_phy_channel(int channel_num, float asr_val);
 	struct BoardInfo myboard[48];
 	struct Flags	flags;

@@ -74,6 +74,11 @@ bool ModbusTcp::check_modbus_packet(unsigned char (&tcp_modbus_buf)[256])
 	}
 
 	if(exception_code){
+		char tmp_buffer[128];
+		for(int i=0; i<tcp_modbus_buf[5]+6; i++) {
+			snprintf(tmp_buffer+i*3, sizeof(tmp_buffer),"%.2x ", (char)tcp_modbus_buf[i]);	
+		}
+		FATAL("the error packet is:"<<tmp_buffer);
 		err_buf[8] = exception_code;	
 		memset(tcp_modbus_buf, '\0', sizeof(tcp_modbus_buf));
 		memcpy(tcp_modbus_buf, err_buf, 9);

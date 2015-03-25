@@ -438,3 +438,31 @@ int Convert::get_unit_type(int sensor_id)
 	return unit_type;
 	
 }
+int Convert::get_channel_type(int channel_number)
+{
+	int unit_num = channel_number/8 + ((channel_number%8)?1:0);
+	int ret = 0;
+
+	switch (unit_num){
+		case 0x01:
+			ret = flags.unit1_type | flags.unit1_sub_type;
+		break;
+		case 0x02:
+			ret = flags.unit2_type | flags.unit2_sub_type;
+		break;
+		case 0x03:
+			ret = flags.unit3_type | flags.unit3_sub_type;
+		break;
+		case 0x04:
+			ret = flags.unit4_type | flags.unit4_sub_type;
+		break;
+		case 0x05:
+			ret = flags.unit5_type | flags.unit5_sub_type;
+		break;
+		case 0x06:
+			ret = flags.unit6_type | flags.unit6_sub_type;
+		break;
+	}
+
+	return ret;
+}

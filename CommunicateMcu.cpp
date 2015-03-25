@@ -12,7 +12,7 @@ CommunicateMcu::CommunicateMcu()
 {
 	DEBUG("create a commMuc object.");
 	memset(server_ip, '\0', sizeof(server_ip));
-	strncpy(server_ip, "192.168.0.93", strlen("192.168.0.93"));
+	strncpy(server_ip, "127.0.0.1", strlen("192.168.0.93"));
 	server_port = 506;
 	while(1){
 		if(init_sock() == -1){
