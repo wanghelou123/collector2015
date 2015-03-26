@@ -1,3 +1,6 @@
-passthrough_tool
-MbtcpServer
-MbtcpClient
+passthrough_tool	// MCU透传工具
+MbtcpServer			//modbus tcp 服务器，数据组格式的
+MbtcpClient			//modbus tcp 客户端，数据组格式的
+MbrtuServer			//标准的modbus RTU,一个RS232, 两个RS485
+StdMbtcpServer		//标准的modbus TCP服务器
+StdMbtcpCient		//标准的modbus TCP客户端

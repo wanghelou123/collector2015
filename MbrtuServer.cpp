@@ -12,6 +12,7 @@ int main(int argc, char*argv[])
 	int n = 0, ret = 0;
 	unsigned char buffer[256];
 	unsigned char *p = buffer;
+	char serial_buffer[20]="/dev/ttySAC";
 	fd_set rset;
 	FD_ZERO(&rset);
 
@@ -22,8 +23,21 @@ int main(int argc, char*argv[])
 		exit(-1);
 	} 
 
+	if(argc != 2) {
+		printf("Usage: MbrtuServer <serial_number>\n");
+		exit(-1);
+	}else {
+		if(atoi(argv[1]) != 1 && (atoi(argv[1]) != 2) && (atoi(argv[1]) != 3)) {
+			printf("serial_number must be 1 or 2 or 3 !\n");
+			exit(-1);
+		}
+		strcat(serial_buffer, argv[1]);
+	}
+
+	DEBUG(serial_buffer);
+
 	//serial object
-	serial myserial = serial("/dev/ttySAC1", 115200, 8, 'n', 1);
+	serial myserial = serial(serial_buffer,115200, 8, 'n', 1);
 
 
 	//modbus RTU object
