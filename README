@@ -4,3 +4,9 @@ MbtcpClient			//modbus tcp 客户端，数据组格式的
 MbrtuServer			//标准的modbus RTU,一个RS232, 两个RS485
 StdMbtcpServer		//标准的modbus TCP服务器
 StdMbtcpCient		//标准的modbus TCP客户端
+
+//液晶屏LCD1602驱动程序
+rivers/lcd1602.c
+drivers/lcd1602.h
+
+ShowDataOnLcd		//在LCD上显示内容的程序

@@ -9,3 +9,12 @@ modbus.bak
 urconfig.properties
 MbrtuServer
 f.sh
+ShowDataOnLcd
+drivers/lcd1602.ko
+drivers/lcd1602.mod.c
+drivers/lcd1602.mod.o
+drivers/lcd1602.o
+drivers/modules.order
+drivers/Module.symvers
+drivers/tags
+drivers/.*
