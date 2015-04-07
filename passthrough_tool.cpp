@@ -25,8 +25,8 @@ using namespace std;
 
 #define DB_PATH		"/etc/gateway/serialConf.db"
 #define MAXLINE 256
-#define LISTENQ	20 
-#define	CLI_NUM	20	
+#define LISTENQ	40 
+#define	CLI_NUM	40	
 #define	EVENT_NUM 20
 #define COLLECT_INTERVAL 1  //数据采集间隔，单位：秒
 

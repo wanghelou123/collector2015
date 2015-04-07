@@ -43,7 +43,7 @@ StdMbtcpServer:Log.o StdMbtcpServer.o CommunicateMcu.o Convert.o StdModbusTcp.o
 StdMbtcpClient:Log.o StdMbtcpClient.o CommunicateMcu.o Convert.o StdModbusTcp.o
 	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^
 	$(STRIP) $@
-ShowDataOnLcd:ShowDataOnLcd.o
+ShowDataOnLcd:Log.o CommunicateMcu.o Convert.o ShowDataOnLcd.o
 	$(CC) $(CFLAGS) $(LIBS) $(INCS) -o $@ $^
 	$(STRIP) $@
 

@@ -209,13 +209,15 @@ int Convert::init_board_info()
 	}
 	sqlite3_finalize(stmt);
 	sqlite3_close(db);
-
+#if 0
 	for(i=0; i<48; i++){
 		printf("%d\t%d\t%f\t%f\t%f\t%f\t%d\t%d\t%d\t%d\t%d\n", \
 				myboard[i].sn,  myboard[i].channel_type, myboard[i].asr_minval, myboard[i].asr_maxval,\
 				myboard[i].phy_minval, myboard[i].phy_maxval,myboard[i].decimal_num, myboard[i].ad_fixedpoint1,\
 				myboard[i].ad_fixedpoint2,myboard[i].ad_fixedpoint3,myboard[i].ad_fixedpoint4 );
 	}
+#endif
+
 }
 
 int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
@@ -438,29 +440,28 @@ int Convert::get_unit_type(int sensor_id)
 	return unit_type;
 	
 }
-int Convert::get_channel_type(int channel_number)
+int Convert::get_channel_sub_type(int channel_number)
 {
 	int unit_num = channel_number/8 + ((channel_number%8)?1:0);
 	int ret = 0;
-
 	switch (unit_num){
 		case 0x01:
-			ret = flags.unit1_type | flags.unit1_sub_type;
+			ret = flags.unit1_sub_type;
 		break;
 		case 0x02:
-			ret = flags.unit2_type | flags.unit2_sub_type;
+			ret = flags.unit2_sub_type;
 		break;
 		case 0x03:
-			ret = flags.unit3_type | flags.unit3_sub_type;
+			ret = flags.unit3_sub_type;
 		break;
 		case 0x04:
-			ret = flags.unit4_type | flags.unit4_sub_type;
+			ret = flags.unit4_sub_type;
 		break;
 		case 0x05:
-			ret = flags.unit5_type | flags.unit5_sub_type;
+			ret = flags.unit5_sub_type;
 		break;
 		case 0x06:
-			ret = flags.unit6_type | flags.unit6_sub_type;
+			ret = flags.unit6_sub_type;
 		break;
 	}
 

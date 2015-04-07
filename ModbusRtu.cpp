@@ -400,7 +400,7 @@ unsigned int ModbusRtu::read_intput_registers(unsigned char (&modbus_buffer)[256
 	for(int i=0; i<data_num; i++) {
 		value = ain_addr[0]<<24 | ain_addr[1]<<16 | ain_addr[2]<<8 | ain_addr[3]<<0;
 		ain_addr += 4; 
-		result = (int)(convert.ad_to_asr_channel(start_addr+i, value, (convert.get_channel_type(start_addr+i)-1?0:1))*1000);
+		result = (int)(convert.ad_to_asr_channel(start_addr+i, value, (convert.get_channel_sub_type(start_addr+i)-1?0:1))*1000);
 		modbus_buffer[3+(i+1)*2-2] = (unsigned char)(result>>8)&0xFF;
 		modbus_buffer[3+(i+1)*2-1] = (unsigned char)(result)&0xFF;
 	}

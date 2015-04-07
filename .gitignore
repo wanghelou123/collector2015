@@ -18,3 +18,4 @@ drivers/modules.order
 drivers/Module.symvers
 drivers/tags
 drivers/.*
+copy.sh

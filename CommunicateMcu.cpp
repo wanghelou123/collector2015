@@ -12,7 +12,7 @@ CommunicateMcu::CommunicateMcu()
 {
 	DEBUG("create a commMuc object.");
 	memset(server_ip, '\0', sizeof(server_ip));
-	strncpy(server_ip, "127.0.0.1", strlen("192.168.0.93"));
+	strncpy(server_ip, "127.0.0.1", strlen("127.0.0.1"));
 	server_port = 506;
 	while(1){
 		if(init_sock() == -1){
@@ -47,7 +47,7 @@ int CommunicateMcu::Read(unsigned char (&recv_buf)[1024])
 	unsigned char send_buf[] = {0x01, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0xF1, 0xBA};
 	int  nRet;
 	struct timeval tmOut;
-	tmOut.tv_sec = 2;
+	tmOut.tv_sec = 3;
 	tmOut.tv_usec = 0;
 	fd_set fds;
 	FD_ZERO(&fds);
@@ -62,10 +62,10 @@ int CommunicateMcu::Read(unsigned char (&recv_buf)[1024])
 	nRet= select(FD_SETSIZE, &fds, NULL, NULL, &tmOut);
 	if(nRet== 0){
 		WARNING("select() read from serial timeout!");
-		return 0;
+		return -1;
 	}else if(nRet<0){
 		FATAL("select error:"<< strerror(errno));
-		return 0;
+		return -1;
 	}
 	n = recv(sockfd, recv_buf, 1024, 0);
 	if(n==0){

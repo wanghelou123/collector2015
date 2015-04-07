@@ -23,6 +23,11 @@ int ModbusTcp::process_modbus_data(unsigned char (&tcp_modbus_buf)[256])
 {
 	int ret=0;
 	if(!check_modbus_packet(tcp_modbus_buf)) {
+		printf("will response the error packet: ");
+		for(int i=0; i<9; i++) {
+			printf("%.2x ", tcp_modbus_buf[i]);
+		}printf("\n");
+
 		return 9;
 	}
 	switch(tcp_modbus_buf[7]) {
