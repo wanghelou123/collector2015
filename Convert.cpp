@@ -322,6 +322,7 @@ int Convert::ad_to_asr(int sensor_number, unsigned char (&buffer)[BUFFER_SIZE])
 	return ret;
 }
 
+//channel_num: 0~47
 float Convert::ad_to_asr_channel(int channel_num, int ad_val,int asr_type)
 {
 	int i = channel_num;
@@ -375,6 +376,8 @@ float Convert::ad_to_asr_channel(int channel_num, int ad_val,int asr_type)
 	return result;
 
 }
+
+
 int Convert::asr_to_phy(int sensor_number,unsigned char (&buffer)[BUFFER_SIZE])
 {
 	int unit_type=0;
@@ -403,6 +406,7 @@ int Convert::asr_to_phy(int sensor_number,unsigned char (&buffer)[BUFFER_SIZE])
 	return (channel_number+four_bytes_count)*4;
 }
 
+//channel_num: 0~47
 int Convert::asr_to_phy_channel(int channel_num, float asr_val)
 {
 	int i=channel_num;

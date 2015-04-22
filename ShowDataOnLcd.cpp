@@ -7,39 +7,70 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <ctype.h>
 #include "Log.h"
 #include "ShowDataOnLcd.h"
+#include "sqlite3.h"
 
 
 #define	CMD_CLEAR	1
 using namespace std;
 
+int ShowDataOnLcd::ShowUnit()
+{
+	DEBUG(__func__);
+	int channel_id;
+	char channel_def[10];
+	char channel_tmp[50];
+	char *p=NULL;
+	int i=0;
+	sqlite3 *db;
+	sqlite3_stmt   *stmt;
+	int rc;
+
+	char sql[128]; 
+
+	rc = sqlite3_open("/etc/gateway/collector.db", &db);
+	if (rc) {
+		FATAL("Can't open database: " << sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return -1;
+	}  
+	sprintf(sql, "select s1.sn,s1.channel_type,s2.channel_name from demarcate as s1,channel_def as s2 where s1.channel_type=s2.channel_type ;");
+	rc = sqlite3_prepare(db, sql, (int)strlen(sql), &stmt, NULL); 
+	if(rc != SQLITE_OK) { 
+		FATAL("SQL error:" << sql << "->" << sqlite3_errmsg(db));
+	}   
+		
+	rc = sqlite3_step(stmt);
+	while(rc == SQLITE_ROW){
+		sscanf((char*)sqlite3_column_text(stmt, 1), "%x", &channel_id);
+		strcpy(channel_tmp, (char*)sqlite3_column_text(stmt, 2));
+
+		memset(channel_def, 0, sizeof(channel_def));
+		p = strchr(channel_tmp, '(');
+		i=0;
+		while(p && *p++ != ')'){
+			channel_def[i++]=*p;	
+		}
+		channel_def[--i] = '\0';
+		if(!strncmp(channel_def, "预留", strlen("预留")) 
+			||!strncmp(channel_def, "输出", strlen("输出")) 
+			||!strncmp(channel_def, "输入", strlen("输入")) )
+			memset(channel_def, 0, sizeof(channel_def));
+
+		strcpy(channel_unit[sqlite3_column_int(stmt,0)-1], channel_def);
+		//printf("%d  %d	%s\n", sqlite3_column_int(stmt, 0), channel_id, channel_unit[sqlite3_column_int(stmt,0)-1]);
+		rc = sqlite3_step(stmt);
+	}
+	sqlite3_finalize(stmt);
+	sqlite3_close(db);
+}
+
 ShowDataOnLcd::ShowDataOnLcd()
 {
-#if 0
-	switch_input_channel_num = 0;
-	relay_output_channel_num = 0;
-	input_register_channel_num = 0;
-	holding_register_channel_num = 0;
 
-	for(int i=0; i<6; i++) {
-		switch (convert.get_unit_type(i+1)) {
-			case 0x01:
-				input_register_channel_num += 8;
-				break;
-			case 0x02:
-				holding_register_channel_num += 4;
-				break;
-			case 0x03:
-				switch_input_channel_num += 8;
-				break;
-			case 0x04:
-				relay_output_channel_num += 4;
-				break;
-		}
-	}
-#endif
-
+	ShowUnit();
 	cout << "Create ShowDataOnLcd object!"<<endl;
 }
 
@@ -84,21 +115,8 @@ void ShowDataOnLcd::run()
 		exit(-1);
 	}
 
+
 	while(1) {
-#if 0
-		for(int i=0; i<n; i++) {
-			printf("%.2x ", recv_buf[i]);
-		}
-		printf("\n");
-
-		for(int i=0; i<din_num;i++)
-			printf("%.2x ", din_addr[i]);
-		printf("\n");
-
-		for(int i=0; i<dout_num;i++)
-			printf("%.2x ", dout_addr[i]);
-		printf("\n");
-#endif
 		
 		if(n<0){
 			::sleep(2);
@@ -112,20 +130,18 @@ void ShowDataOnLcd::run()
 		memset(lcd_buffer, 0x20, sizeof(lcd_buffer));
 		p_lcd = lcd_buffer;
 		line_count = 0;
-#if 0
-	DEBUG("ain_num = "<< ain_num);
-	DEBUG("aout_num = "<< aout_num);
-	DEBUG("din_num = "<<din_num);
-	DEBUG("dout_num = "<< dout_num);
-#endif
 
 		for(int i=0; i<ain_num; i++) {
 			value = ain_addr[0]<<24 | ain_addr[1]<<16 | ain_addr[2]<<8 | ain_addr[3]<<0;
 			ain_addr += 4; 
 			channel_sub_type = (convert.get_channel_sub_type(i+1)-1?0:1);
+			//将AD值转换成模拟值
 			result = convert.ad_to_asr_channel(i, value, channel_sub_type);
+			//将模拟值转换成物理值
+			result = (float)convert.asr_to_phy_channel(i, result)/1000;	
+		 
 			//printf("value = %08x; result=%6.3f\n", value, result);
-			snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.3f %s",i+1, result,channel_sub_type?"V":"mA");
+			snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.3f %s",i+1, result,channel_unit[i]);
 			p_lcd += 16; //移动到另一行
 			line_count++;
 		}
@@ -159,12 +175,12 @@ void ShowDataOnLcd::run()
 
 
 		for(int i=0; i<line_count/2; i++) {
-		/*	
+		//debug message
+		#if 0
 			for(int j=0; j<32;j++)
 				printf("%c", lcd_buffer[i*32+j]);
-
 			printf("\n");
-		*/
+		#endif
 
 			write(fd, lcd_buffer+i*32, 32);
 
