@@ -18,6 +18,14 @@ drivers/modules.order
 drivers/Module.symvers
 drivers/tags
 drivers/.*
+A8_drivers/lcd1602.ko
+A8_drivers/lcd1602.mod.c
+A8_drivers/lcd1602.mod.o
+A8_drivers/lcd1602.o
+A8_drivers/modules.order
+A8_drivers/Module.symvers
+A8_drivers/tags
+A8_drivers/.*
 copy.sh
 setup_to_gwfs.sh
 collector.db

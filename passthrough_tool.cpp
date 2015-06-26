@@ -372,14 +372,20 @@ void process_serial_data()
 void process_pipe_data(int fd)
 {
 	unsigned char buf[1024];	
-	unsigned char line[MAXLINE];
 	unsigned char *p = buf;
 	int n;
 	n = read(fd, buf, 8);
-	DEBUG("read "<< n << " bytes from pipe.");
+	DEBUG("read "<< n << " bytes from pipe, will write to serial.");
 	if(n != myserial->serialWrite(p, n)){
 		FATAL("write collect cmd to mcu failure!");
 	}
+}
+
+
+void process_serial_response(int fd)
+{
+	unsigned char line[MAXLINE];
+	int n;
 	struct timeval tmOut;
 	tmOut.tv_sec = 2;
 	tmOut.tv_usec = 0;
@@ -570,9 +576,10 @@ void *collect_data(void *arg)
 	char send_buf[] = {0x01, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0xF1, 0xBA};
 	int n;
 	while(1){
+		DEBUG("write cmd {0x01, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0xF1, 0xBA } to PIPE");
 		n = write(*(int*)arg, send_buf, sizeof(send_buf));
 		if(n != sizeof(send_buf)){
-			FATAL("write collect cmd to mcu error:"<< strerror(errno));
+			FATAL("write CMD to PIPE error. "<< strerror(errno));
 		}
 		::sleep(COLLECT_INTERVAL);
 	}
@@ -661,10 +668,9 @@ int main(int argc, char* argv[])
 			/*处理串口输入上的数据*/
 			if(events[i].data.fd == myserial->fd){ 
 
-				process_serial_data();
+				process_serial_response( myserial->fd);
 
 			}else if(events[i].data.fd == pipe_fd[0]){
-
 				process_pipe_data(pipe_fd[0]);	
 
 			}
@@ -680,6 +686,8 @@ int main(int argc, char* argv[])
 				if(process_clisocket_data(epfd, events[i].data.fd)<0){
 					events[i].data.fd = -1;
 				}
+			}else {
+				FATAL("DESCRIPTOR ERRROR.");
 			}
 
 		}

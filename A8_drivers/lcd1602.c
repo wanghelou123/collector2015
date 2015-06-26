@@ -3,7 +3,6 @@
 #include <linux/init.h>
 #include <linux/version.h>
 #include <linux/spinlock.h>
-#include <mach/regs-gpio.h>
 #include <mach/hardware.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
@@ -13,19 +12,22 @@
 #include <asm/uaccess.h>
 #include <linux/miscdevice.h>
 #include "lcd1602.h"
-#define DEVICE_NAME "LCD1602"
-#define	LCDRS			S3C2410_GPC(1)
-#define	LCDRW			S3C2410_GPD(11)
-#define	LCDE			S3C2410_GPD(12)
-#define DB0				S3C2410_GPD(13)
-#define DB1				S3C2410_GPD(14)
-#define DB2				S3C2410_GPD(15)
 
-#define DB3				S3C2410_GPD(2)
-#define DB4				S3C2410_GPD(3)
-#define DB5				S3C2410_GPD(4)
-#define DB6				S3C2410_GPD(5)
-#define DB7				S3C2410_GPD(6)
+#define DEVICE_NAME "LCD1602"
+#define GPIO_TO_PIN(bank, gpio) (32 * (bank) + (gpio))
+
+
+#define	LCDRS			GPIO_TO_PIN(2, 24)
+#define	LCDRW			GPIO_TO_PIN(3, 6)
+#define	LCDE			GPIO_TO_PIN(3, 14)
+#define DB0				GPIO_TO_PIN(3, 5)
+#define DB1				GPIO_TO_PIN(0, 7)
+#define DB2				GPIO_TO_PIN(0, 11)
+#define DB3				GPIO_TO_PIN(2, 11)
+#define DB4				GPIO_TO_PIN(2, 12)
+#define DB5				GPIO_TO_PIN(2, 13)
+#define DB6				GPIO_TO_PIN(2, 14)
+#define DB7				GPIO_TO_PIN(2, 15)
 
 static int address_count = 0;
 
@@ -52,7 +54,7 @@ void lcd_wait_until_finish(void)
 	int count = 0;
 	while(lcd1602_bf_in()){
 		if(count++ > 10)
-			break;
+			break;;		
 	}
 
 	// 循环直至BF=0  
@@ -191,21 +193,21 @@ void lcd1602_init(void)
  */
 void lcd1602_en_out(int hl) //使能
 {
-	gpio_set_value(LCDE, (hl == 0) ? 0 : 1);
+	gpio_direction_output(LCDE, (hl == 0) ? 0 : 1);
 }
 
 
 //读写1602控制,H:读1602,L:写入1602
 void lcd1602_rw_out(int hl) 
 {
-	gpio_set_value(LCDRW, (hl == 0) ? 0 : 1);
+	gpio_direction_output(LCDRW, (hl == 0) ? 0 : 1);
 }
 
 
 //输入指令数据选择
 void lcd1602_rs_out(int hl) 
 {
-	gpio_set_value(LCDRS, (hl == 0) ? 0 : 1);
+	gpio_direction_output(LCDRS, (hl == 0) ? 0 : 1);
 }
 
 
@@ -213,40 +215,20 @@ void lcd1602_rs_out(int hl)
 void lcd1602_bus_write(unsigned char c)
 {
 	//printk("write data: %c ==> 0x%x\n", c, c);
-	//配置数据线管脚为输出功能
-	s3c_gpio_cfgpin(DB0, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(DB1, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(DB2, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(DB3, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(DB4, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(DB5, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(DB6, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(DB7, S3C2410_GPIO_OUTPUT);
-
-	gpio_set_value(DB0, (c>>0)&1);
-	gpio_set_value(DB1, (c>>1)&1);
-	gpio_set_value(DB2, (c>>2)&1);
-	gpio_set_value(DB3, (c>>3)&1);
-	gpio_set_value(DB4, (c>>4)&1);
-	gpio_set_value(DB5, (c>>5)&1);
-	gpio_set_value(DB6, (c>>6)&1);
-	gpio_set_value(DB7, (c>>7)&1);
+	gpio_direction_output(DB0, (c>>0)&1);
+	gpio_direction_output(DB1, (c>>1)&1);
+	gpio_direction_output(DB2, (c>>2)&1);
+	gpio_direction_output(DB3, (c>>3)&1);
+	gpio_direction_output(DB4, (c>>4)&1);
+	gpio_direction_output(DB5, (c>>5)&1);
+	gpio_direction_output(DB6, (c>>6)&1);
+	gpio_direction_output(DB7, (c>>7)&1);
 }
 
 //从1602的8根数据总线读入数据
 unsigned char lcd1602_bus_read(void)
 {
 	unsigned char data = 0;
-	//配置数据线管脚为输入功能
-	s3c_gpio_cfgpin(DB0, S3C2410_GPIO_INPUT);
-	s3c_gpio_cfgpin(DB1, S3C2410_GPIO_INPUT);
-	s3c_gpio_cfgpin(DB2, S3C2410_GPIO_INPUT);
-	s3c_gpio_cfgpin(DB3, S3C2410_GPIO_INPUT);
-	s3c_gpio_cfgpin(DB4, S3C2410_GPIO_INPUT);
-	s3c_gpio_cfgpin(DB5, S3C2410_GPIO_INPUT);
-	s3c_gpio_cfgpin(DB6, S3C2410_GPIO_INPUT);
-	s3c_gpio_cfgpin(DB7, S3C2410_GPIO_INPUT);
-
 
 	//读取8位数据
 	data |= gpio_get_value(DB0)<<0;
@@ -370,18 +352,54 @@ static struct miscdevice misc = {
 
 static int my_LCD1602_init(void)
 {
-	int ret;
+	int ret = 0;
+	ret |= gpio_request(LCDRS, NULL);
+	ret |= gpio_request(LCDRW, NULL);
+	ret |= gpio_request(LCDE, NULL);
+	ret |= gpio_request(DB0, NULL);
+	ret |= gpio_request(DB1, NULL);
+	ret |= gpio_request(DB2, NULL);
+	ret |= gpio_request(DB3, NULL);
+	ret |= gpio_request(DB4, NULL);
+	ret |= gpio_request(DB5, NULL);
+	ret |= gpio_request(DB6, NULL);
+	ret |= gpio_request(DB7, NULL);
+	ret |= gpio_request(LCDRS, NULL);
+	ret |= gpio_request(LCDRW, NULL);
+	ret |= gpio_request(LCDE, NULL);
+	ret |= gpio_request(DB0, NULL);
+	ret |= gpio_request(DB1, NULL);
+	ret |= gpio_request(DB2, NULL);
+	ret |= gpio_request(DB3, NULL);
+	ret |= gpio_request(DB4, NULL);
+	ret |= gpio_request(DB5, NULL);
+	ret |= gpio_request(DB6, NULL);
+	ret |= gpio_request(DB7, NULL);
+	if(ret !=0 ) {
+		printk("gpio_request error. ret = %d\n", ret);	
+	}
+
+#if 1 
+//调试用
+gpio_direction_output(LCDRS, 1);
+gpio_direction_output(LCDRW, 1);
+gpio_direction_output(LCDE, 1);
+gpio_direction_output(DB0, 1);
+gpio_direction_output(DB1, 1);
+gpio_direction_output(DB2, 1);
+gpio_direction_output(DB3, 1);
+gpio_direction_output(DB4, 1);
+gpio_direction_output(DB5, 1);
+gpio_direction_output(DB6, 1);
+gpio_direction_output(DB7, 1);
+#endif
+
 	ret = misc_register(&misc);
 	if (ret < 0) {
 		printk(DEVICE_NAME ":can't register device.");
 		return ret;
 	}
-
 	//配置数据/命令选择、读/写选择、数据管脚为输出状态
-	s3c_gpio_cfgpin(LCDRS, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(LCDRW, S3C2410_GPIO_OUTPUT);
-	s3c_gpio_cfgpin(LCDE, S3C2410_GPIO_OUTPUT);
-
 	lcd1602_init();
 	lcd_goto_xy(0,0);			 // 字符位置：(4,0) , 5*7点阵列字符
 	lcd_puts(" Welcome to use");    // 显示字符
@@ -393,6 +411,32 @@ static int my_LCD1602_init(void)
 }
 static void __exit my_LCD1602_exit(void)
 {
+#if 0
+//调试用
+gpio_direction_output(LCDRS, 0);
+gpio_direction_output(LCDRW, 0);
+gpio_direction_output(LCDE, 0);
+gpio_direction_output(DB0, 0);
+gpio_direction_output(DB1, 0);
+gpio_direction_output(DB2, 0);
+gpio_direction_output(DB3, 0);
+gpio_direction_output(DB4, 0);
+gpio_direction_output(DB5, 0);
+gpio_direction_output(DB6, 0);
+gpio_direction_output(DB7, 0);
+#endif
+	gpio_free(LCDRS);
+	gpio_free(LCDRW);
+	gpio_free(LCDE);
+	gpio_free(DB0);
+	gpio_free(DB1);
+	gpio_free(DB2);
+	gpio_free(DB3);
+	gpio_free(DB4);
+	gpio_free(DB5);
+	gpio_free(DB6);
+	gpio_free(DB7);
+	
 	misc_deregister(&misc);
 	printk(DEVICE_NAME " uninstall\n");
 }

@@ -1,5 +1,6 @@
 #include "Log.h"
 #include "ModbusRtu.h"
+#include <string.h>
 
 ModbusRtu::ModbusRtu()
 {

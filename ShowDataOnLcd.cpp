@@ -41,7 +41,7 @@ int ShowDataOnLcd::ShowUnit()
 	if(rc != SQLITE_OK) { 
 		FATAL("SQL error:" << sql << "->" << sqlite3_errmsg(db));
 	}   
-		
+
 	rc = sqlite3_step(stmt);
 	while(rc == SQLITE_ROW){
 		sscanf((char*)sqlite3_column_text(stmt, 1), "%x", &channel_id);
@@ -55,8 +55,8 @@ int ShowDataOnLcd::ShowUnit()
 		}
 		channel_def[--i] = '\0';
 		if(!strncmp(channel_def, "预留", strlen("预留")) 
-			||!strncmp(channel_def, "输出", strlen("输出")) 
-			||!strncmp(channel_def, "输入", strlen("输入")) )
+				||!strncmp(channel_def, "输出", strlen("输出")) 
+				||!strncmp(channel_def, "输入", strlen("输入")) )
 			memset(channel_def, 0, sizeof(channel_def));
 
 		strcpy(channel_unit[sqlite3_column_int(stmt,0)-1], channel_def);
@@ -91,8 +91,12 @@ void ShowDataOnLcd::run()
 
 	unsigned char recv_buf[1024];
 	unsigned char *p = recv_buf;
-	int n = mcu.Read(recv_buf);
-	
+	int n = 0;
+	while((n = mcu.Read(recv_buf)) < 0){
+		FATAL("mcu.Read error.");
+		::sleep(2);
+	}
+
 	int ain_num = *(p+3)/4;
 	unsigned char *ain_addr = p + 2 + 2; 
 
@@ -117,9 +121,10 @@ void ShowDataOnLcd::run()
 
 
 	while(1) {
-		
+
 		if(n<0){
 			::sleep(2);
+			n = mcu.Read(recv_buf);
 			continue;
 		}
 		ain_addr = p + 2 + 2;
@@ -127,7 +132,7 @@ void ShowDataOnLcd::run()
 		din_addr = p + 2 + 2 + ain_num*4 + 2 + aout_num*4 + 2;
 		dout_addr = p + 2 + 2 + ain_num*4 + 2 + aout_num*4 + 2 + din_num + 2;
 
-		memset(lcd_buffer, 0x20, sizeof(lcd_buffer));
+		memset(lcd_buffer, 0x0, sizeof(lcd_buffer));
 		p_lcd = lcd_buffer;
 		line_count = 0;
 
@@ -139,7 +144,7 @@ void ShowDataOnLcd::run()
 			result = convert.ad_to_asr_channel(i, value, channel_sub_type);
 			//将模拟值转换成物理值
 			result = (float)convert.asr_to_phy_channel(i, result)/1000;	
-		 
+
 			//printf("value = %08x; result=%6.3f\n", value, result);
 			snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.3f %s",i+1, result,channel_unit[i]);
 			p_lcd += 16; //移动到另一行
@@ -154,7 +159,7 @@ void ShowDataOnLcd::run()
 			p_lcd += 16; //移动到另一行
 			line_count++;
 		}
-		
+
 
 		for(int i=0; i<din_num; i++) {
 			snprintf(p_lcd, sizeof(lcd_buffer), "DIN%02d:%d ",i+1, *(din_addr+i) );
@@ -162,7 +167,7 @@ void ShowDataOnLcd::run()
 			line_count++;
 		}
 		line_count -= din_num/2;
-		
+
 
 		for(int i=0; i<dout_num; i++) {
 			snprintf(p_lcd, sizeof(lcd_buffer), "DO%02d:%d   ",i+1, *(dout_addr+i) );
@@ -175,13 +180,10 @@ void ShowDataOnLcd::run()
 
 
 		for(int i=0; i<line_count/2; i++) {
-		//debug message
-		#if 0
-			for(int j=0; j<32;j++)
-				printf("%c", lcd_buffer[i*32+j]);
-			printf("\n");
-		#endif
-
+			//debug message
+			memset(tmp_buffer, 0, sizeof(tmp_buffer));
+			memcpy(tmp_buffer, lcd_buffer+i*32, 32);
+			DEBUG(tmp_buffer);
 			write(fd, lcd_buffer+i*32, 32);
 
 			::sleep(2);

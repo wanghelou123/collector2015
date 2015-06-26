@@ -1,5 +1,6 @@
 #include "Log.h"
 #include "StdModbusTcp.h"
+#include <string.h>
 
 StdModbusTcp::StdModbusTcp()
 {

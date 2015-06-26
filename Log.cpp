@@ -6,6 +6,7 @@
 #include <string>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 using namespace std;
 
 //////////////////////////////////////////////////////////////////////  
@@ -43,6 +44,7 @@ bool Log::init_default_config_file()
 
 	snprintf(log_buffer, sizeof(log_buffer),"%s%s\n%s",
 			"log4cplus.rootLogger=INFO,ALL_MSGS\n"
+			"#log4cplus.rootLogger=DEBUG,STDOUT\n"
 			"log4cplus.appender.ALL_MSGS=log4cplus::RollingFileAppender\n"
 			"log4cplus.appender.ALL_MSGS.File=",
 			_log_name,
