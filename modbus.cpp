@@ -405,7 +405,7 @@ int ModbusTcp::read_register(unsigned char (&tcp_modbus_buf)[256])
 			tcp_modbus_buf[8] = 0x04;
 			ret = 9;	
 		}else{
-			memcpy(tcp_modbus_buf+9, node_buf+start_addr, data_num*2);
+			memcpy(tcp_modbus_buf+9, node_buf+start_addr*2, data_num*2);
 		}
 	}else if(uid == 0xFF) {
 		get_device_info();
@@ -506,7 +506,7 @@ int ModbusTcp::write_register(unsigned char (&tcp_modbus_buf)[256])
 				}
 				break;
 			case 0xD0: //模拟量输出
-				if((0xD0|((start_addr+2)/2))==p[0] && 0x83==p[1]) {
+				if((0xD0|((start_addr+2)/2))==p[0] && 0x82==p[1]) {
 					int ad_val = conver.asr_to_ad_channel(tcp_modbus_buf[6], p[0]&0x0F, ((p[2]<<8)|p[3])/1000);
 					if (!relay_output(tcp_modbus_buf[6], p[0]&0x0F, 0x02, ad_val)) {
 						error_flag=1;
@@ -527,6 +527,11 @@ int ModbusTcp::write_register(unsigned char (&tcp_modbus_buf)[256])
 
 		p+=4;//移动到下一个通道
 		start_addr+=2;
+
+		//控制完一路后回一个延时，以防单片机响应不过来
+		if(i<channel_num){
+			usleep(200000);
+		}
 	}
 
 	memset(tcp_modbus_buf, '\0', sizeof(tcp_modbus_buf));

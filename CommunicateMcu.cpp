@@ -99,7 +99,7 @@ int CommunicateMcu::Write(unsigned char (&send_buf)[1024], int size, unsigned ch
 		return -1;
 	}
 	struct timeval tmOut;
-	tmOut.tv_sec = 3;
+	tmOut.tv_sec = 5;
 	tmOut.tv_usec = 0;
 	fd_set fds;
 	FD_ZERO(&fds);
@@ -107,6 +107,7 @@ int CommunicateMcu::Write(unsigned char (&send_buf)[1024], int size, unsigned ch
 	int  nRet;
 
 
+	printf("send to passthough_tool packet: ");
 	for(int i=0; i<size; i++) {
 		printf("%.2x ", send_buf[i]);
 	}printf("\n");
@@ -125,7 +126,7 @@ int CommunicateMcu::Write(unsigned char (&send_buf)[1024], int size, unsigned ch
 	}else if(n<0){
 		FATAL("recv:an error occurred."<<strerror(errno));
 	}
-	DEBUG("recv "<< n << " bytes from socket");
+	DEBUG("recv "<< n << " bytes from passthrough_tool.");
 
 	return (n>0) ? n : -1;
 }
