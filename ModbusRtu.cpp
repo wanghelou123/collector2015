@@ -2,7 +2,8 @@
 #include "ModbusRtu.h"
 #include <string.h>
 
-ModbusRtu::ModbusRtu()
+ModbusRtu::ModbusRtu(int slaveAddr)
+:slave_addr(slaveAddr)
 {
 	switch_input_channel_num = 0;
 	relay_output_channel_num = 0;
@@ -29,7 +30,8 @@ ModbusRtu::ModbusRtu()
 	DEBUG("\ninput_register_channel_num = "<< input_register_channel_num
 			<<"\nholding_register_channel_num = "<<holding_register_channel_num 	
 			<<"\nswitch_input_channel_num = "<<switch_input_channel_num
-			<<"\nrelay_output_channel_num = "<<relay_output_channel_num  );
+			<<"\nrelay_output_channel_num = "<<relay_output_channel_num
+			<<"\nslave address = "<<slave_addr);
 
 }
 
@@ -161,7 +163,7 @@ bool ModbusRtu::check_modbus_packet(unsigned char (&modbus_buffer)[256])
 
 bool ModbusRtu::check_uid(unsigned char (&modbus_buffer)[256])
 {
-	return (0x01 == modbus_buffer[0]) ? true : false;
+	return (slave_addr == modbus_buffer[0]) ? true : false;
 }
 
 bool ModbusRtu::check_func_node(unsigned char (&modbus_buffer)[256])

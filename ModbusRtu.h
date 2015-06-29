@@ -10,7 +10,7 @@
 
 class ModbusRtu {
 public:
-	ModbusRtu();
+	ModbusRtu(int slaveAddr);
 	~ModbusRtu();
 	int process_modbus_data(unsigned char (&modbus_buffer)[256], int len);
 
@@ -36,5 +36,6 @@ private:
 	int relay_output_channel_num;
 	int input_register_channel_num;
 	int holding_register_channel_num;
+	int slave_addr;
 };
 #endif
