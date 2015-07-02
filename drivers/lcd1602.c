@@ -382,6 +382,18 @@ static int my_LCD1602_init(void)
 	s3c_gpio_cfgpin(LCDRW, S3C2410_GPIO_OUTPUT);
 	s3c_gpio_cfgpin(LCDE, S3C2410_GPIO_OUTPUT);
 
+	printk("LCDRS: %08x\n", s3c_gpio_getpull(LCDRS));
+	printk("LCDRW: %08x\n", s3c_gpio_getpull(LCDRW));
+	printk("LCDE: %08x\n", s3c_gpio_getpull(LCDE));
+	printk("DB0: %08x\n", s3c_gpio_getpull(DB0));
+	printk("DB1: %08x\n", s3c_gpio_getpull(DB1));
+	printk("DB2: %08x\n", s3c_gpio_getpull(DB2));
+	printk("DB3: %08x\n", s3c_gpio_getpull(DB3));
+	printk("DB4: %08x\n", s3c_gpio_getpull(DB4));
+	printk("DB5: %08x\n", s3c_gpio_getpull(DB5));
+	printk("DB6: %08x\n", s3c_gpio_getpull(DB6));
+	printk("DB7: %08x\n", s3c_gpio_getpull(DB7));
+
 	lcd1602_init();
 	lcd_goto_xy(0,0);			 // 字符位置：(4,0) , 5*7点阵列字符
 	lcd_puts(" Welcome to use");    // 显示字符

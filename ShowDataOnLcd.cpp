@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <ctype.h>
+#include <math.h>
 #include "Log.h"
 #include "ShowDataOnLcd.h"
 #include "sqlite3.h"
@@ -143,8 +144,11 @@ void ShowDataOnLcd::run()
 			//将AD值转换成模拟值
 			result = convert.ad_to_asr_channel(i, value, channel_sub_type);
 			//将模拟值转换成物理值
-			result = (float)convert.asr_to_phy_channel(i, result)/1000;	
+			if(convert.is_sensor_conf()) {
+				result = (float)convert.asr_to_phy_channel(i, result)/ pow(10, convert.get_decimal_num(i));	
+			}
 
+			//printf("decimal_num=%d\n", convert.get_decimal_num(i));
 			//printf("value = %08x; result=%6.3f\n", value, result);
 			snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.3f %s",i+1, result,channel_unit[i]);
 			p_lcd += 16; //移动到另一行

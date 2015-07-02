@@ -418,6 +418,18 @@ int Convert::asr_to_phy_channel(int channel_num, float asr_val)
 
 }
 
+//得到小数点位数
+int Convert::get_decimal_num(int channel_num)
+{
+	return myboard[channel_num].decimal_num;
+}
+
+//得到是否做传感器转换，转换返回1，不转换返回0
+int Convert::is_sensor_conf()
+{
+	return flags.sensor_conf;
+}
+
 
 int Convert::asr_to_ad_channel(int sensor_num, int channel_num, float asr_val)
 {

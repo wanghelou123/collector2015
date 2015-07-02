@@ -16,21 +16,17 @@
 #define DEVICE_NAME "LCD1602"
 #define GPIO_TO_PIN(bank, gpio) (32 * (bank) + (gpio))
 
-
 #define	LCDRS			GPIO_TO_PIN(2, 24)
-#define	LCDRW			GPIO_TO_PIN(3, 6)
-#define	LCDE			GPIO_TO_PIN(3, 14)
-#define DB0				GPIO_TO_PIN(3, 5)
-#define DB1				GPIO_TO_PIN(0, 7)
+#define	LCDRW			GPIO_TO_PIN(2, 17)
+#define	LCDE			GPIO_TO_PIN(0, 8)
+#define DB0				GPIO_TO_PIN(0, 9)
+#define DB1				GPIO_TO_PIN(0, 10)
 #define DB2				GPIO_TO_PIN(0, 11)
 #define DB3				GPIO_TO_PIN(2, 11)
 #define DB4				GPIO_TO_PIN(2, 12)
 #define DB5				GPIO_TO_PIN(2, 13)
 #define DB6				GPIO_TO_PIN(2, 14)
 #define DB7				GPIO_TO_PIN(2, 15)
-
-static int address_count = 0;
-
 
 void delay_us(unsigned long us) // 延时微秒
 {  
@@ -364,35 +360,10 @@ static int my_LCD1602_init(void)
 	ret |= gpio_request(DB5, NULL);
 	ret |= gpio_request(DB6, NULL);
 	ret |= gpio_request(DB7, NULL);
-	ret |= gpio_request(LCDRS, NULL);
-	ret |= gpio_request(LCDRW, NULL);
-	ret |= gpio_request(LCDE, NULL);
-	ret |= gpio_request(DB0, NULL);
-	ret |= gpio_request(DB1, NULL);
-	ret |= gpio_request(DB2, NULL);
-	ret |= gpio_request(DB3, NULL);
-	ret |= gpio_request(DB4, NULL);
-	ret |= gpio_request(DB5, NULL);
-	ret |= gpio_request(DB6, NULL);
-	ret |= gpio_request(DB7, NULL);
+
 	if(ret !=0 ) {
 		printk("gpio_request error. ret = %d\n", ret);	
 	}
-
-#if 1 
-//调试用
-gpio_direction_output(LCDRS, 1);
-gpio_direction_output(LCDRW, 1);
-gpio_direction_output(LCDE, 1);
-gpio_direction_output(DB0, 1);
-gpio_direction_output(DB1, 1);
-gpio_direction_output(DB2, 1);
-gpio_direction_output(DB3, 1);
-gpio_direction_output(DB4, 1);
-gpio_direction_output(DB5, 1);
-gpio_direction_output(DB6, 1);
-gpio_direction_output(DB7, 1);
-#endif
 
 	ret = misc_register(&misc);
 	if (ret < 0) {
@@ -411,20 +382,6 @@ gpio_direction_output(DB7, 1);
 }
 static void __exit my_LCD1602_exit(void)
 {
-#if 0
-//调试用
-gpio_direction_output(LCDRS, 0);
-gpio_direction_output(LCDRW, 0);
-gpio_direction_output(LCDE, 0);
-gpio_direction_output(DB0, 0);
-gpio_direction_output(DB1, 0);
-gpio_direction_output(DB2, 0);
-gpio_direction_output(DB3, 0);
-gpio_direction_output(DB4, 0);
-gpio_direction_output(DB5, 0);
-gpio_direction_output(DB6, 0);
-gpio_direction_output(DB7, 0);
-#endif
 	gpio_free(LCDRS);
 	gpio_free(LCDRW);
 	gpio_free(LCDE);
