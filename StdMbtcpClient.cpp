@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <unistd.h>
+#include <netinet/tcp.h>
 #include "StdModbusTcp.h"
 #include "Log.h"
 
@@ -20,17 +21,66 @@ void show_prog_info()
 	cout << "Compiled on " << __DATE__ << " at "<< __TIME__ <<endl;
 }
 
+void set_keepalive_option(int sockfd)
+{
+	int a=0,b=0,c=0,d=0;
+	socklen_t optlen;
+	getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&a, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&b, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&c, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&d, &optlen);  
+	DEBUG("set before keepAlive:"<<a<<" keepIdle:"<<b<<" keepInterval:"<<c<<" keepCount:"<<d);
+
+	int keepAlive = 1;   // 开启keepalive属性. 缺省值: 0(关闭)  
+	int keepIdle = 60;   // 如果在60秒内没有任何数据交互,则进行探测. 缺省值:7200(s)  
+	int keepInterval = 5;   // 探测时发探测包的时间间隔为5秒. 缺省值:75(s)  
+	int keepCount = 3;   // 探测重试的次数. 全部超时则认定连接失效..缺省值:9(次)  
+	int ret=0;
+
+	ret = setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&keepAlive, sizeof(keepAlive));  
+	if(ret==0){
+		DEBUG("SO_KEEPALIVE set sucess.");
+	}else if(ret == -1){
+		WARNING("SO_KEEPALIVE set failure.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&keepIdle, sizeof(keepIdle));  
+	if(ret==0){
+		DEBUG("SO_KEEPIDLE set sucess.");
+	}else if(ret == -1){
+		WARNING("SO_KEEPALIVE set sucess.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&keepInterval, sizeof(keepInterval));  
+	if(ret==0){
+		DEBUG("TCP_KEEPINTVL set success.");
+	}else if(ret == -1){
+		WARNING("TCP_KEEPINTVL set failure.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&keepCount, sizeof(keepCount));  
+	if(ret==0){
+		DEBUG("TCP_KEEPCNT set success.");
+	}else if(ret == -1){
+		WARNING("TCP_KEEPCNT set failure.");
+	}
+
+	a=0,b=0,c=0,d=0;
+	getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&a, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&b, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&c,&optlen );  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&d, &optlen);  
+	DEBUG("set afer keepAlive:"<<a<<" keepIdle:"<<b<<" keepInterval:"<<c<<" keepCount:"<<d);
+
+	return;
+}
 int connect_to_server(char* server_ip, int server_port)
 {
 	struct hostent *h;
 	struct sockaddr_in servaddr;
 	
-	printf("server_ip:%s\n", server_ip);
-	printf("server_port:%d\n", server_port);
+	DEBUG("server_ip:"<<server_ip << ", server_port:"<<server_port);
 
 	if((h=gethostbyname(server_ip))==NULL)
 	{
-		fprintf(stderr,"cat not getIP\n");
+		FATAL("hgethostbyname error, can not getIP");
 		return -1;	
 	}
 
@@ -41,87 +91,10 @@ int connect_to_server(char* server_ip, int server_port)
 	servaddr.sin_port = htons(server_port);
 
 	int ret = connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
-	printf("ret = %d\n", ret);
 
 	return (0==ret)?sockfd:ret;
 }
  
-int hand_shake(int sockfd) {
-	unsigned char send_buffer[22]={0x15, 0x01, 0x22, 0x22, 0x00, 0x10};	
-	unsigned char recv_buffer[10];
-	unsigned char right_response_buffer[7] = {0x15, 0x01, 0x22, 0x22, 0x00, 0x01, 0x80};
-	unsigned char error_response_buffer[7] = {0x15, 0x01, 0x22, 0x22, 0x00, 0x01, 0x01};
-	int ret = 0;
-	FILE *fp;
-	char buffer[128];
-	char serial_number[20];
-	char *pos;
-
-	fp = fopen("/etc/gateway/network.txt", "r");
-
-	if(NULL == fp){
-		perror("fopen:");
-	}
-
-
-	while(fgets(buffer, 80, fp)){
-		pos=strrchr(buffer, '=');
-		if(pos){
-			char tmp[128]={0};
-			strncpy(tmp, buffer, strlen(buffer)-strlen(pos));
-			pos++;
-			if(strcmp(tmp, "Serialnum") == 0){
-				strcpy(serial_number, pos);
-				break;
-			}
-		}
-	}
-
-	memcpy(send_buffer+6, serial_number, 16);
-
-	DEBUG("serial_number:"<< serial_number);
-	char tmp_buffer[50];
-	memset(tmp_buffer, 0, sizeof(tmp_buffer));
-	for(int i=0;i<22;i++) {
-		snprintf(tmp_buffer+i*3, sizeof(tmp_buffer), "%.2x ", (char)send_buffer[i]);
-	}
-	DEBUG("shak  hands packet:"<< tmp_buffer);
-
-	struct timeval timeout;
-	timeout.tv_sec = 10;
-	timeout.tv_usec = 0;
-	fd_set fds;
-	FD_ZERO(&fds);
-	FD_SET(sockfd, &fds);
-
-	ret = send(sockfd, send_buffer, sizeof(send_buffer),MSG_NOSIGNAL);
-	if(ret != 22) {
-		FATAL("send:"<< strerror(errno));
-		return -1;
-	}
-	ret = select(sockfd+1, &fds, NULL, NULL, &timeout);
-	if(ret == 0) {
-		NOTICE("select, wiat hand shake response packet timeout!");
-		return -1;
-	}else if(ret == -1) {
-			FATAL("select():"<< strerror(errno));	
-			return -1;
-	}
-	recv(sockfd, recv_buffer, 7, 0);
-
-	if(0 == memcmp(recv_buffer, right_response_buffer, sizeof(right_response_buffer))) {
-		DEBUG("shake hands success!");
-	} else if(0 == memcmp(recv_buffer, error_response_buffer, sizeof(error_response_buffer))) {
-		NOTICE("shake hands failed!");
-		ret = -1;
-	}else {
-		FATAL(__func__<<" error packet!");
-		ret = -1;
-	}
-
-	return ret;
-}
-
 void clean_socket_buf(int skt) 
 {
 	struct timeval tmOut;
@@ -148,7 +121,7 @@ void clean_socket_buf(int skt)
 		if(n>0){
 			count+=n;
 			if((count%(0x100000))==0)
-				printf("clean bytes %d\n", count);	
+				NOTICE("clean recv buffer "<< count<<" bytes");	
 
 		}else if(n==0){
 			NOTICE("recv(): the peer has  performed  an  orderly shutdown.");
@@ -237,15 +210,10 @@ int main(int argc, char * argv[])
 				NOTICE("connect to "<< argv[1]<<":"<<argv[2]<<" failed!");
 				::sleep(30);
 			}else {
+				set_keepalive_option(sockfd);
 				break;	
 			}
 		}
-#if 0
-		if(hand_shake(sockfd)<0){
-			shutdown(sockfd, SHUT_RDWR);
-			close(sockfd);
-		}
-#endif
 
 		while(1) {
 			struct timeval timeout;

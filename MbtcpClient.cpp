@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <unistd.h>
+#include <netinet/tcp.h>
 #include "modbus.h"
 #include "Log.h"
 
@@ -20,17 +21,67 @@ void show_prog_info()
 	cout << "Compiled on " << __DATE__ << " at "<< __TIME__ <<endl;
 }
 
+void set_keepalive_option(int sockfd)
+{
+	int a=0,b=0,c=0,d=0;
+	socklen_t optlen;
+	getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&a, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&b, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&c, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&d, &optlen);  
+	DEBUG("set before keepAlive:"<<a<<" keepIdle:"<<b<<" keepInterval:"<<c<<" keepCount:"<<d);
+
+	int keepAlive = 1;   // 开启keepalive属性. 缺省值: 0(关闭)  
+	int keepIdle = 60;   // 如果在60秒内没有任何数据交互,则进行探测. 缺省值:7200(s)  
+	int keepInterval = 5;   // 探测时发探测包的时间间隔为5秒. 缺省值:75(s)  
+	int keepCount = 3;   // 探测重试的次数. 全部超时则认定连接失效..缺省值:9(次)  
+	int ret=0;
+
+	ret = setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&keepAlive, sizeof(keepAlive));  
+	if(ret==0){
+		DEBUG("SO_KEEPALIVE set sucess.");
+	}else if(ret == -1){
+		WARNING("SO_KEEPALIVE set failure.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&keepIdle, sizeof(keepIdle));  
+	if(ret==0){
+		DEBUG("SO_KEEPIDLE set sucess.");
+	}else if(ret == -1){
+		WARNING("SO_KEEPALIVE set sucess.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&keepInterval, sizeof(keepInterval));  
+	if(ret==0){
+		DEBUG("TCP_KEEPINTVL set success.");
+	}else if(ret == -1){
+		WARNING("TCP_KEEPINTVL set failure.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&keepCount, sizeof(keepCount));  
+	if(ret==0){
+		DEBUG("TCP_KEEPCNT set success.");
+	}else if(ret == -1){
+		WARNING("TCP_KEEPCNT set failure.");
+	}
+
+	a=0,b=0,c=0,d=0;
+	getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&a, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&b, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&c,&optlen );  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&d, &optlen);  
+	DEBUG("set afer keepAlive:"<<a<<" keepIdle:"<<b<<" keepInterval:"<<c<<" keepCount:"<<d);
+
+	return;
+}
+
 int connect_to_server(char* server_ip, int server_port)
 {
 	struct hostent *h;
 	struct sockaddr_in servaddr;
 	
-	printf("server_ip:%s\n", server_ip);
-	printf("server_port:%d\n", server_port);
+	DEBUG("server_ip:"<<server_ip << ", server_port:"<<server_port);
 
 	if((h=gethostbyname(server_ip))==NULL)
 	{
-		fprintf(stderr,"cat not getIP\n");
+		FATAL("hgethostbyname error, can not getIP");
 		return -1;	
 	}
 
@@ -41,7 +92,6 @@ int connect_to_server(char* server_ip, int server_port)
 	servaddr.sin_port = htons(server_port);
 
 	int ret = connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
-	printf("ret = %d\n", ret);
 
 	return (0==ret)?sockfd:ret;
 }
@@ -148,7 +198,7 @@ void clean_socket_buf(int skt)
 		if(n>0){
 			count+=n;
 			if((count%(0x100000))==0)
-				printf("clean bytes %d\n", count);	
+				NOTICE("clean recv buffer "<< count<<" bytes");	
 
 		}else if(n==0){
 			NOTICE("recv(): the peer has  performed  an  orderly shutdown.");
@@ -237,6 +287,7 @@ int main(int argc, char * argv[])
 				NOTICE("connect to "<< argv[1]<<":"<<argv[2]<<" failed!");
 				::sleep(30);
 			}else {
+				set_keepalive_option(sockfd);
 				break;	
 			}
 		}

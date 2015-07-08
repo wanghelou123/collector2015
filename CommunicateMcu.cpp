@@ -19,7 +19,7 @@ CommunicateMcu::CommunicateMcu()
 		if(init_sock() == -1){
 			FATAL("init socket error!");
 		}else{
-			NOTICE("init socket success!");
+			DEBUG("init socket success!");
 			break;
 		}
 		::sleep(2);
@@ -139,7 +139,7 @@ int CommunicateMcu::init_sock()
 
 	if((h=gethostbyname(server_ip))==NULL)
 	{
-		fprintf(stderr,"cat not getIP\n");
+		FATAL("hgethostbyname error, can not getIP");
 		return -1;
 	}
 

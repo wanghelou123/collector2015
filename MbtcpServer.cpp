@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <netinet/tcp.h>
 #include "Log.h"
 #include "modbus.h"
 
@@ -28,6 +29,57 @@ void show_prog_info()
 	cout << "collector2015 Software, Inc."<<endl;
 	cout << "Program name MbtcpServer run with hardware v1." << endl;
 	cout << "Compiled on " << __DATE__ << " at "<< __TIME__ <<endl;
+}
+
+void set_keepalive_option(int sockfd)
+{
+	int a=0,b=0,c=0,d=0;
+	socklen_t optlen;
+	getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&a, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&b, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&c, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&d, &optlen);  
+	DEBUG("set before keepAlive:"<<a<<" keepIdle:"<<b<<" keepInterval:"<<c<<" keepCount:"<<d);
+
+	int keepAlive = 1;   // 开启keepalive属性. 缺省值: 0(关闭)  
+	int keepIdle = 60;   // 如果在60秒内没有任何数据交互,则进行探测. 缺省值:7200(s)  
+	int keepInterval = 5;   // 探测时发探测包的时间间隔为5秒. 缺省值:75(s)  
+	int keepCount = 3;   // 探测重试的次数. 全部超时则认定连接失效..缺省值:9(次)  
+	int ret=0;
+
+	ret = setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&keepAlive, sizeof(keepAlive));  
+	if(ret==0){
+		DEBUG("SO_KEEPALIVE set sucess.");
+	}else if(ret == -1){
+		WARNING("SO_KEEPALIVE set failure.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&keepIdle, sizeof(keepIdle));  
+	if(ret==0){
+		DEBUG("SO_KEEPIDLE set sucess.");
+	}else if(ret == -1){
+		WARNING("SO_KEEPALIVE set sucess.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&keepInterval, sizeof(keepInterval));  
+	if(ret==0){
+		DEBUG("TCP_KEEPINTVL set success.");
+	}else if(ret == -1){
+		WARNING("TCP_KEEPINTVL set failure.");
+	}
+	ret = setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&keepCount, sizeof(keepCount));  
+	if(ret==0){
+		DEBUG("TCP_KEEPCNT set success.");
+	}else if(ret == -1){
+		WARNING("TCP_KEEPCNT set failure.");
+	}
+
+	a=0,b=0,c=0,d=0;
+	getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&a, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, (void*)&b, &optlen);  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, (void*)&c,&optlen );  
+	getsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, (void*)&d, &optlen);  
+	DEBUG("set afer keepAlive:"<<a<<" keepIdle:"<<b<<" keepInterval:"<<c<<" keepCount:"<<d);
+
+	return;
 }
 
 int init_server_socket(int server_port)
@@ -136,6 +188,9 @@ void process_new_client(int epfd, int listenfd)
 	}
 	DEBUG("accapt a connection from " <<  inet_ntoa(peeraddr.sin_addr) << ":" << ntohs(peeraddr.sin_port) );
 
+	//设置心跳机制
+	set_keepalive_option(connfd);
+
 	struct epoll_event ev;
 	ev.data.fd=connfd;
 	ev.events=EPOLLIN;
@@ -226,6 +281,7 @@ int main(int argc, char *argv[])
 	} 
 	//初始化网络
 	listenfd = init_server_socket(atoi(argv[1]));
+
 	
 	//创建ModbusTcp对象
 	ModbusTcp modbus_tcp; 

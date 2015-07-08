@@ -5,8 +5,10 @@ MbrtuServer			//标准的modbus RTU,一个RS232, 两个RS485
 StdMbtcpServer		//标准的modbus TCP服务器
 StdMbtcpCient		//标准的modbus TCP客户端
 
-//液晶屏LCD1602驱动程序
-rivers/lcd1602.c
-drivers/lcd1602.h
+//s3c2416液晶屏LCD1602驱动程序
+drivers/lcd1602.ko
+
+//AM3352液晶屏LCD1602驱动程序
+A8_drivers/lcd1602.ko
 
 ShowDataOnLcd		//在LCD上显示内容的程序
