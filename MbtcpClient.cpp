@@ -99,8 +99,8 @@ int connect_to_server(char* server_ip, int server_port)
 int hand_shake(int sockfd) {
 	unsigned char send_buffer[22]={0x15, 0x01, 0x22, 0x22, 0x00, 0x10};	
 	unsigned char recv_buffer[10];
-	unsigned char right_response_buffer[7] = {0x15, 0x01, 0x22, 0x22, 0x00, 0x01, 0x80};
-	unsigned char error_response_buffer[7] = {0x15, 0x01, 0x22, 0x22, 0x00, 0x01, 0x01};
+	unsigned const char right_response_buffer[7] = {0x15, 0x01, 0x22, 0x22, 0x00, 0x01, 0x80};
+	unsigned const char error_response_buffer[7] = {0x15, 0x01, 0x22, 0x22, 0x00, 0x01, 0x01};
 	int ret = 0;
 	FILE *fp;
 	char buffer[128];
@@ -111,6 +111,9 @@ int hand_shake(int sockfd) {
 
 	if(NULL == fp){
 		perror("fopen:");
+		FATAL("fopen"<<strerror(errno));
+
+		return -1;
 	}
 
 
@@ -126,6 +129,8 @@ int hand_shake(int sockfd) {
 			}
 		}
 	}
+
+	fclose(fp); //add by whl 2015-07-20,记得一定要关闭文件，否则打开文件超过1024次的话会发生段错误 
 
 	memcpy(send_buffer+6, serial_number, 16);
 
@@ -157,7 +162,14 @@ int hand_shake(int sockfd) {
 			FATAL("select():"<< strerror(errno));	
 			return -1;
 	}
-	recv(sockfd, recv_buffer, 7, 0);
+	int n = recv(sockfd, recv_buffer, 7, 0);
+		if(n==0){
+			NOTICE("recv(): the peer has  performed  an  orderly shutdown.");
+			return -1;
+		}else if(n<0){
+			FATAL("recv():an error occurred."<<strerror(errno));
+			return -1;
+		}
 
 	if(0 == memcmp(recv_buffer, right_response_buffer, sizeof(right_response_buffer))) {
 		DEBUG("shake hands success!");
@@ -165,7 +177,12 @@ int hand_shake(int sockfd) {
 		NOTICE("shake hands failed!");
 		ret = -1;
 	}else {
-		FATAL(__func__<<" error packet!");
+		memset(tmp_buffer, 0, sizeof(tmp_buffer));
+		for(int i=0;i<7;i++) {
+			snprintf(tmp_buffer+i*3, sizeof(tmp_buffer), "%.2x ", (char)recv_buffer[i]);
+		}
+		FATAL(__func__<<" error packet!"<< tmp_buffer);
+
 		ret = -1;
 	}
 
@@ -265,7 +282,7 @@ int main(int argc, char * argv[])
 	if(argc != 3) {
 		printf("usage: %s <hostname or IPaddr> <port>\n", strrchr(argv[0], '/')+1);	
 		exit(-1);
-	}
+}
 	//显示程序版本信息
 	show_prog_info();
 
@@ -295,6 +312,8 @@ int main(int argc, char * argv[])
 		if(hand_shake(sockfd)<0){
 			shutdown(sockfd, SHUT_RDWR);
 			close(sockfd);
+			::sleep(30);
+			continue;
 		}
 
 		while(1) {
