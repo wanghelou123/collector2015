@@ -275,15 +275,12 @@ void collector_mode()
 			}
 			continue;	
 		}
-
 		//处理所发生的所有事件
 		for(i=0;i<nfds;++i)
 		{
-
 			/*处理串口输入上的数据*/
 			if(events[i].data.fd==myserial->fd)
 			{ 
-
 				if ( (sockfd = events[i].data.fd) < 0) {
 					continue;
 				}
@@ -328,7 +325,10 @@ void collector_mode()
 #endif
 
 			}/*处理sock新客户连接*/
-			else if(events[i].data.fd==listenfd)//如果新监测到一个SOCKET用户连接到了绑定的SOCKET端口，建立新的连接。
+		}
+		for(i=0;i<nfds;++i)
+		{
+			if(events[i].data.fd==listenfd)//如果新监测到一个SOCKET用户连接到了绑定的SOCKET端口，建立新的连接。
 			{
 				connfd = accept(listenfd,(sockaddr *)&clientaddr, &clilen);
 				if(connfd<0){
@@ -369,6 +369,11 @@ void collector_mode()
 			}/*如果是已经连接的用户，并且收到数据，那么进行读入*/
 			else if(events[i].events&EPOLLIN)
 			{
+				/*如果是串口则跳过，因为上边的循环中已经处理的串口*/
+				if(events[i].data.fd==myserial->fd)
+				{ 
+					continue;
+				}
 				//cout << "EPOLLIN" << endl;
 				if ( (sockfd = events[i].data.fd) < 0) {
 					continue;
@@ -409,12 +414,14 @@ void collector_mode()
 						clean_socket_buf(sockfd);
 						continue;
 					}
+
 					/*将从socket上接收到的数据写到串口上边*/
 					unsigned char *p = NULL;
 					p = line;
 					if(n != myserial->serialWrite(p, n) ){
 						FATAL("write to serial port error");
 					}
+					usleep(10000);
 #if 0
 					printf("write to serial num %d\n:",n);
 					int i=0;

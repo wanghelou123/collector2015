@@ -150,7 +150,20 @@ void ShowDataOnLcd::run()
 
 			//printf("decimal_num=%d\n", convert.get_decimal_num(i));
 			//printf("value = %08x; result=%6.3f\n", value, result);
-			snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.3f %s",i+1, result,channel_unit[i]);
+			switch(convert.get_decimal_num(i)) {
+				case 0:
+					snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.0f %s",i+1, result,channel_unit[i]);
+					break;
+				case 1:
+					snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.1f %s",i+1, result,channel_unit[i]);
+					break;
+				case 2:
+					snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.2f %s",i+1, result,channel_unit[i]);
+					break;
+				case 3:
+					snprintf(p_lcd, sizeof(lcd_buffer), "AIN%02d:%6.3f %s",i+1, result,channel_unit[i]);
+					break;
+			}
 			p_lcd += 16; //移动到另一行
 			line_count++;
 		}
