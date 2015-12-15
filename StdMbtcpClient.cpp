@@ -131,7 +131,7 @@ void clean_socket_buf(int skt)
 			break;
 		}
 	}
-	DEBUG("clean the socket buff ok, total " << count <<" bytes");
+	NOTICE("clean the socket buff ok, total " << count <<" bytes");
 }
 
 int  process_socket_data(int sockfd, StdModbusTcp & std_modbus_tcp)
@@ -152,7 +152,7 @@ int  process_socket_data(int sockfd, StdModbusTcp & std_modbus_tcp)
 			clean_socket_buf(sockfd);
 			return 0;
 		}
-		char tmp_buffer[128]={0};
+		char tmp_buffer[512]={0};
 		for(int i = 0; i< n; i++) {
 			snprintf(tmp_buffer+i*3, sizeof(tmp_buffer), "%.2x ", (char)line[i]);
 		}
@@ -226,9 +226,11 @@ int main(int argc, char * argv[])
 			if(ret == -1) {
 				FATAL("select():"<< strerror(errno));	
 			}
+			else if(ret == 0){
+				continue;
+			}
+
 			if(process_socket_data(sockfd, std_modbus_tcp)<0){
-				shutdown(sockfd, SHUT_RDWR);
-				close(sockfd);
 				break;
 			}
 		}
