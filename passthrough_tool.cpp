@@ -412,8 +412,26 @@ void process_serial_response(int fd)
 		process_serial_data(); 	
 		return;
 	}
-	mcu_data_g.len = n;
-	memcpy(mcu_data_g.buf, line, n);
+
+	unsigned short crc_calc = 0;
+	crc_calc = crc( line, 0, n - 2 );
+	if(crc_calc == (line[n-2]<<8|line[n-1])) {
+		mcu_data_g.len = n;
+		memcpy(mcu_data_g.buf, line, n);
+	}else {
+#if 0
+		FATAL("CRC CHECK ERROR. will drop the serial packet.");	
+		int j;
+		char tmp_buf[1024];
+		memset(tmp_buf, 0, sizeof(tmp_buf));
+		for(j=0; j<n; j++) {
+			sprintf(tmp_buf+j*3, "%.2x ", (char)line[j]);
+		}
+		FATAL(tmp_buf);
+
+#endif
+	}
+
 }
 
 //处理新的客户端
