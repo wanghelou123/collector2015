@@ -246,7 +246,7 @@ int  process_socket_data(int sockfd, ModbusTcp & modbus_tcp)
 			clean_socket_buf(sockfd);
 			return 0;
 		}
-		char tmp_buffer[128]={0};
+		char tmp_buffer[512]={0};
 		for(int i = 0; i< n; i++) {
 			snprintf(tmp_buffer+i*3, sizeof(tmp_buffer), "%.2x ", (char)line[i]);
 		}

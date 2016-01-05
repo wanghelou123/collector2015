@@ -226,7 +226,7 @@ int  process_socket_data(int epfd, int sockfd, ModbusTcp & modbus_tcp)
 			return 0;
 		}
 
-		char tmp_buffer[128]={0};
+		char tmp_buffer[512]={0};
 		for(int i = 0; i< n; i++) {
 			snprintf(tmp_buffer+i*3, sizeof(tmp_buffer), "%.2x ", (char)line[i]);
 		}
